@@ -1,0 +1,26 @@
+# Erklärvideo mit eigener Aufnahme
+# Lege dein Video in ~/Blockfilm/Material (oder Knopf „＋ Video/Bild“) und ändere den Dateinamen.
+film 4k fps 30 titel "Physik erklärt"
+musik ruhig lautstaerke 0.6
+
+kapitel "Warum fällt der Ball?" 2.5
+
+video "testvideo.mp4" von 0:06 bis 0:12
+& sprecher "Hier lassen wir einen Ball aus elf Metern Höhe fallen."
+& kreis 49 22 radius 6 text "Ball" in 0.5 fuer 3
+
+video "testvideo.mp4" von 0:12 bis 0:14 tempo 0.25
+& text "Zeitlupe" 2 oben
+& zeiger von 70 25 nach 52 45 text "Schwerkraft zieht nach unten" farbe gelb fuer 6
+& lupe 50 45 zoom 1.8 in 1.5
+& sprecher "In Zeitlupe sieht man: Er wird immer schneller."
+
+standbild 3
+& lupe aus in 0.8
+& formel "s = ½ · g · t²" "Fallstrecke = halbe Erdbeschleunigung mal Zeit zum Quadrat" unten 3
+
+video "testvideo.mp4" von 0:18 bis 0:24
+& zeichentrick an in 1
+& sprecher "Und so sieht das Ganze als Zeichentrick aus!"
+zeichentrick aus in 1
+ausblenden 1

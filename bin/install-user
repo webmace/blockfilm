@@ -1,0 +1,23 @@
+#!/usr/bin/env bash
+# Installiert Blockfilm für den aktuellen Benutzer (ohne Passwort)
+set -e
+HIER="$(cd "$(dirname "$(readlink -f "$0")")/.." && pwd)"
+mkdir -p ~/.local/bin ~/.local/share/applications ~/.local/share/icons/hicolor/scalable/apps
+ln -sf "$HIER/bin/blockfilm" ~/.local/bin/blockfilm
+cat > ~/.local/share/icons/hicolor/scalable/apps/blockfilm.svg <<'SVG'
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><rect x="8" y="8" width="48" height="48" rx="4" fill="#866043"/><rect x="8" y="8" width="48" height="16" rx="4" fill="#6aa83a"/><rect x="8" y="18" width="48" height="6" fill="#6aa83a"/><polygon points="27,30 27,48 42,39" fill="#fff"/></svg>
+SVG
+cat > ~/.local/share/applications/blockfilm.desktop <<DESK
+[Desktop Entry]
+Name=Blockfilm
+Comment=Erklärvideos und Animationen aus Skripten machen
+Exec=$HOME/.local/bin/blockfilm %f
+Icon=blockfilm
+Terminal=false
+Type=Application
+Categories=AudioVideo;Video;Education;
+MimeType=text/plain;
+StartupWMClass=blockfilm
+DESK
+update-desktop-database ~/.local/share/applications 2>/dev/null || true
+echo "Blockfilm installiert. Start: im App-Menü „Blockfilm“ oder im Terminal: blockfilm"

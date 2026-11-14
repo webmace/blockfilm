@@ -1,0 +1,31 @@
+#!/usr/bin/env bash
+# Blockfilm: alle fertigen Filme nacheinander als Video speichern (ohne Fenster).
+# Skripte: ~/Blockfilm/Nachtfilme/*.txt   Videos: ~/Videos/Blockfilm/Nachtfilme/
+# Fertige Videos werden übersprungen, also kann man es einfach neu starten.
+HIER="$(cd "$(dirname "$(readlink -f "$0")")/.." && pwd)"
+SKRIPTE="$HOME/Blockfilm/Nachtfilme"
+AUS="$HOME/Videos/Blockfilm/Nachtfilme"
+mkdir -p "$AUS"
+LOG="$AUS/protokoll.txt"
+# falls gerade schon ein Film gespeichert wird: warten, bis er fertig ist
+while pgrep -f -- "server.mjs --render" >/dev/null; do sleep 60; done
+echo "=== Start $(date '+%d.%m.%Y %H:%M') ===" >> "$LOG"
+# kürzeste Filme zuerst, damit früh etwas fertig ist
+for n in geister himmelblau umlaufbahn koerper tagundnacht schwarzesloch herbst klima mathe viren dinos technik; do
+  f="$SKRIPTE/$n.txt"; ziel="$AUS/$n.mp4"
+  [ -f "$f" ] || continue
+  if [ -s "$ziel" ] && ffprobe -v error "$ziel" >/dev/null 2>&1; then echo "$n: schon fertig" >> "$LOG"; continue; fi
+  echo "$(date '+%H:%M') $n: startet" >> "$LOG"
+  rm -f "$AUS/$n.teil.mp4"
+  if nice -n 5 systemd-inhibit --what=sleep:idle --who=Blockfilm --why="Filme werden gespeichert" \
+       "$HIER/bin/blockfilm" --render "$f" -o "$AUS/$n.teil.mp4" > "$AUS/.letzter-lauf.txt" 2>&1 \
+     && ffprobe -v error "$AUS/$n.teil.mp4" >/dev/null 2>&1; then
+    mv "$AUS/$n.teil.mp4" "$ziel"
+    echo "$(date '+%H:%M') $n: fertig" >> "$LOG"
+    notify-send "Blockfilm" "Film fertig: $n" 2>/dev/null
+  else
+    echo "$(date '+%H:%M') $n: FEHLER – $(tail -c 300 "$AUS/.letzter-lauf.txt" | tr '\r' '\n' | tail -2)" >> "$LOG"
+  fi
+done
+echo "=== Ende $(date '+%d.%m.%Y %H:%M') ===" >> "$LOG"
+notify-send "Blockfilm" "Alle Filme sind gespeichert (Videos/Blockfilm/Nachtfilme)." 2>/dev/null

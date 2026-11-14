@@ -1,0 +1,31 @@
+# Physik: Freier Fall und Wurfparabel
+film 4k fps 30 titel "Freier Fall"
+welt flach groesse 48
+himmel tag
+
+figur forscher hemd weiss brille bei -4 0 blick 90
+baue saeule 0 -2 hoehe 10 material steinziegel
+
+kugel ball bei 0 11.5 -1 radius 0.4 farbe rot spur
+lineal von 1 0 -1 nach 1 11.5 -1
+
+kamera bei -9 6 12 schaut auf 0 5 -1
+forscher sagt "Wie lange braucht ein Ball, um 11 Meter tief zu fallen?"
+formel "s = ½ · g · t²" oben 3
+warte 3
+stoppuhr start
+ball faellt
+stoppuhr stopp
+forscher sagt "Etwa 1,5 Sekunden! Genau wie die Formel sagt."
+zaehler "Endgeschwindigkeit" von 0 bis 14.7 einheit "m/s" in 1.5
+warte 2
+verstecke alles
+stoppuhr aus
+kugel wurf bei -6 1 4 radius 0.3 farbe blau spur
+text "Die Wurfparabel" 3 oben
+wurf fliegt mit 6 9 -2
+diagramm "Höhe beim Wurf" werte 0 3.6 5.2 4.8 2.3 0 namen "0s" "0,4s" "0,8s" "1,2s" "1,6s" "1,9s" linie einheit "m" 6
+pendel bei 8 0 -4 laenge 5 winkel 35
+& kamera faehrt zu 4 5 8 schaut auf 8 3 -4 in 3
+forscher sagt "Und ein Pendel schwingt immer im gleichen Takt."
+warte 4

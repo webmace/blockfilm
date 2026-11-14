@@ -1,0 +1,32 @@
+# Erster Film: Zwei Freunde und eine Überraschung
+film 4k fps 30 titel "Die Überraschung"
+welt huegel seed 4
+himmel tag
+musik froehlich
+
+figur steve bei -4 0 blick 90
+figur alex hemd gruen haare blond schmal bei 4 0 blick -90
+tier bello art hund bei 6 2 blick -90
+
+titel "Die Überraschung" 2.5 karte
+kamera totale
+steve winkt
+steve sagt "Hey Alex! Komm mal mit, ich zeig dir was!"
+alex sagt "Okay, was denn?"
+kamera folgt steve abstand 7 hoehe 3
+steve geht zu 0 -6
+& alex geht zu 2 -5
+& bello laeuft zu 3 -3
+steve dreht sich zu alex
+baue haus 0 -12
+& rauch 0 2 -12
+alex erschrickt
+alex sagt "Woah! Hast du das gebaut?!"
+kamera nah steve
+steve nickt
+steve sagt "Ja! In nur einer Nacht."
+kamera schulter alex steve
+alex jubelt
+& bello springt
+& herzen bei alex
+ausblenden 1

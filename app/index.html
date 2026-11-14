@@ -1,0 +1,176 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Blockfilm</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<header>
+  <div class="logo"><span class="wuerfel"></span>Blockfilm</div>
+  <button id="b-neu" title="Neues Skript">Neu</button>
+  <button id="b-oeffnen" title="Skript öffnen (Strg+O)">Öffnen</button>
+  <button id="b-speichern" title="Speichern (Strg+S)">Speichern</button>
+  <span id="dateiname" class="dateiname">unbenannt</span>
+  <label class="knopf" title="Eigenes Video oder Bild einfügen (oder einfach ins Fenster ziehen)">＋ Video/Bild <input type="file" id="medienWahl" accept="video/*,image/*,.mkv" hidden></label>
+  <span class="platz"></span>
+  <span id="info" class="info"></span>
+  <button id="b-hilfe" title="Alle Befehle (F1)">Befehle</button>
+  <button id="b-video" class="haupt" title="Den Film, der rechts in der Vorschau läuft, als MP4-Datei speichern (in Videos/Blockfilm)">💾 Als Video speichern</button>
+</header>
+<main>
+  <section class="links">
+    <div class="tabs"><button id="tab-text" class="an">✍️ Beschreiben</button><button id="tab-skript">📝 Skript (für Profis)</button></div>
+    <div class="beschreiben" id="beschreiben">
+      <div class="ki-box">
+        <div class="ki-zeile">
+          <span class="ki-symbol">🤖</span>
+          <input id="kiThema" spellcheck="true" lang="de" placeholder="Was soll die KI erklären? z. B. Warum ist der Himmel blau?">
+          <select id="kiAlter" title="Für welches Alter? Gilt für die KI und für die fertigen Filme."><option value="0-2">0–2 Jahre</option><option value="3-5" selected>3–5 Jahre</option><option value="6-9">6–9 Jahre</option><option value="10+">10+ Jahre</option></select>
+          <select id="kiStil" title="Wie soll der Film aussehen?"><option value="echt" selected>🌍 Echte Welt</option><option value="minecraft">🧱 Minecraft</option><option value="egal">🎲 KI entscheidet</option></select>
+          <button id="kiLos" class="haupt" title="Die KI schreibt einen ganz neuen Film zu deinem Thema (braucht einen API-Schlüssel)">🤖 KI-Film</button>
+          <button id="kiEinst" title="KI-Einstellungen (API-Schlüssel)">⚙</button>
+        </div>
+        <div id="kiStatus" class="ki-status"></div>
+      </div>
+      <div id="kiFertig" class="ki-fertig" hidden>
+        <div class="ki-titel" id="kiTitel"></div>
+        <p>Drück rechts auf <b>▶</b> zum Anschauen. Wenn etwas anders sein soll, schreib es oben ins Feld (z. B. „mach es kürzer“ oder „mit einem Hund“) und klick <b>Ändern</b>.</p>
+        <div class="zeile"><button id="kiNeu">Neues Thema</button><button id="kiSelbst">Selbst beschreiben statt KI</button></div>
+        <div id="kiQuellen" class="ki-quellen"></div>
+      </div>
+      <textarea id="klartext" spellcheck="true" lang="de" placeholder="Schreib hier in normalen Sätzen, was im Video passieren soll. Zum Beispiel:&#10;&#10;Zeig mein Video von Sekunde 5 bis 12.&#10;Der Sprecher sagt: Hier fällt der Sand nach unten.&#10;Mach bei Sekunde 2 einen roten Kreis oben rechts.&#10;Danach Standbild für 3 Sekunden.&#10;Mach es als Zeichentrick."></textarea>
+      <details class="beispiele" open><summary>Beispielsätze – zum Einfügen anklicken</summary><div id="beispielSaetze"></div></details>
+      <div class="bericht" id="bericht"></div>
+    </div>
+    <div class="editor" id="editor">
+      <div class="nummern" id="nummern"></div>
+      <div class="feld">
+        <pre class="farbig" id="farbig" aria-hidden="true"></pre>
+        <textarea id="text" spellcheck="false" autocomplete="off" autocapitalize="off"></textarea>
+      </div>
+    </div>
+    <div class="fehler" id="fehler"></div>
+  </section>
+  <section class="rechts">
+    <div class="buehne" id="buehne"><div class="vb-hinweis" id="vbHinweis">Klick: Abspielen/Pause · Leertaste · Esc: Vollbild beenden</div><canvas id="ausgabe" title="Klick: Abspielen/Pause · Strg+Klick: Position (x y) ins Skript einfügen"></canvas><div class="laden" id="laden">Lade …</div></div>
+    <div class="steuer">
+      <button id="b-vollbild" title="Vollbild (Taste F oder Doppelklick ins Bild, zurück mit Esc)">⛶ Vollbild</button>
+      <button id="b-anfang" title="Zum Anfang (Pos1)">⏮</button>
+      <button id="b-spielen" class="rund" title="Abspielen / Pause (Leertaste im Bild)">▶</button>
+      <input type="range" id="zeit" min="0" max="1000" value="0" step="1">
+      <span id="zeitText" class="zeitText">0:00.0 / 0:00.0</span>
+      <label class="schalter" title="Ton in der Vorschau"><input type="checkbox" id="tonAn" checked> Ton</label>
+      <label class="schalter" title="Hintergrundmusik im Film (Geräusche bleiben immer)"><input type="checkbox" id="musikAn"> Musik</label>
+      <select id="stimmeWahl" title="Welche Stimme liest vor?"><option value="">🗣 Stimme …</option></select>
+      <button id="stimmeProbe" title="Stimme anhören">▶</button>
+      <button id="ausspracheKnopf" title="Wörter, die die Stimme falsch ausspricht, verbessern">Aussprache</button>
+      <label class="schalter regler" title="Lautstärke der Vorlese-Stimme">🔊 <input type="range" id="lautStimme" min="0" max="100" value="55"></label>
+      <label class="schalter regler" title="Lautstärke der Geräusche">💥 <input type="range" id="lautGeraeusche" min="0" max="100" value="45"></label>
+      <select id="vorschauQ" title="Vorschau-Qualität">
+        <option value="0.5">Vorschau: schnell</option>
+        <option value="0.75" selected>Vorschau: mittel</option>
+        <option value="1">Vorschau: scharf</option>
+      </select>
+    </div>
+    <div class="status" id="status"></div>
+  </section>
+</main>
+
+<div class="schicht" id="hilfe" hidden>
+  <div class="karte breit">
+    <div class="kopf"><h2>Befehle</h2><input id="hilfeSuche" placeholder="Suchen …"><button class="zu" data-zu="hilfe">✕</button></div>
+    <div class="hilfeText" id="hilfeText"></div>
+  </div>
+</div>
+
+<div class="schicht" id="oeffnen" hidden>
+  <div class="karte">
+    <div class="kopf"><h2>Skript öffnen</h2><button class="zu" data-zu="oeffnen">✕</button></div>
+    <h3>Meine Skripte</h3><div class="dateiListe" id="listeEigene"></div>
+    <h3>Beispiele</h3><div class="dateiListe" id="listeBeispiele"></div>
+    <div class="zeile"><label class="knopf">Datei vom Computer … <input type="file" id="dateiWahl" accept=".txt,.bf,.blockfilm,text/plain" hidden></label></div>
+  </div>
+</div>
+
+<div class="schicht" id="export" hidden>
+  <div class="karte">
+    <div class="kopf"><h2>💾 Als Video speichern</h2><button class="zu" data-zu="export" id="exportZu">✕</button></div>
+    <div id="exportStart">
+      <div class="zeile"><label>Auflösung</label>
+        <select id="ex-aufl">
+          <option value="3840x2160" selected>4K (3840×2160) – schön, aber sehr langsam</option>
+          <option value="skript">wie im Skript</option>
+          <option value="2560x1440">1440p (2560×1440)</option>
+          <option value="1920x1080">Full HD (1920×1080) – etwa 4× schneller als 4K</option>
+          <option value="1280x720">HD (1280×720) – am schnellsten</option>
+          <option value="1080x1920">Hochkant / Shorts (1080×1920)</option>
+        </select></div>
+      <div class="zeile"><label>Bilder pro Sekunde</label>
+        <select id="ex-fps"><option value="skript">wie im Skript</option><option>24</option><option value="30">30</option><option value="60" selected>60 (am flüssigsten)</option></select></div>
+      <div class="zeile"><label>Mit Ton</label><input type="checkbox" id="ex-ton" checked></div>
+      <p class="klein">Das Video landet in <b id="ex-ordner"></b>. 4K dauert deutlich länger – das ist normal.</p>
+      <div class="zeile rechtsbuendig"><button class="haupt" id="ex-los">Los geht's</button></div>
+    </div>
+    <div id="exportLauf" hidden>
+      <div class="balken"><div id="ex-balken"></div></div>
+      <p id="ex-text">…</p>
+      <div class="zeile rechtsbuendig"><button id="ex-stopp">Abbrechen</button></div>
+    </div>
+    <div id="exportFertig" hidden>
+      <p>✅ Fertig! <span id="ex-ergebnis"></span></p>
+      <div class="zeile rechtsbuendig"><button id="ex-ordnerAuf">Ordner öffnen</button><button class="haupt" id="ex-abspielen">Video abspielen</button></div>
+    </div>
+  </div>
+</div>
+
+<div class="schicht" id="kiDialog" hidden>
+  <div class="karte">
+    <div class="kopf"><h2>🤖 KI einrichten</h2><button class="zu" data-zu="kiDialog">✕</button></div>
+    <p>Damit die KI Filme schreiben kann, braucht Blockfilm einen <b>API-Schlüssel von Anthropic</b> (die Firma hinter der KI Claude).</p>
+    <ol class="klein">
+      <li>Ein Erwachsener öffnet <b>console.anthropic.com</b> und meldet sich an.</li>
+      <li>Unter <b>Billing</b> etwas Guthaben aufladen. Ein Film kostet ungefähr 10–15 Cent.</li>
+      <li>Unter <b>API Keys</b> einen neuen Schlüssel erstellen und ihn hier einfügen. Er beginnt mit <code>sk-ant-</code>.</li>
+    </ol>
+    <div class="zeile"><button id="kiSeite">Seite öffnen</button></div>
+    <div class="zeile"><input id="kiSchluessel" type="password" placeholder="sk-ant-…" style="flex:1;background:#14161a;border:1px solid var(--rand);color:var(--text);border-radius:6px;padding:8px 10px"></div>
+    <p class="klein">Der Schlüssel wird nur auf diesem Computer gespeichert (in ~/Blockfilm/einstellungen.json).</p>
+    <p id="kiDialogMeldung" class="klein"></p>
+    <div class="zeile rechtsbuendig"><button class="haupt" id="kiSpeichern">Speichern</button></div>
+  </div>
+</div>
+
+<div class="schicht" id="ausspracheDialog" hidden>
+  <div class="karte breit" style="width:min(720px,94vw)">
+    <div class="kopf"><h2>🗣 Aussprache verbessern</h2><button class="zu" data-zu="ausspracheDialog">✕</button></div>
+    <p class="klein">Spricht die Stimme ein Wort falsch aus? Trag links das Wort ein und rechts, wie man es <b>sagt</b>, so wie man es hört. Beispiel: <i>Minecraft</i> → <i>Meinkrafft</i>, <i>Ozelot</i> → <i>Ohzelott</i>. Mit ▶ hörst du es sofort.</p>
+    <div id="ausspracheListe" class="aussprache-liste"></div>
+    <div class="zeile"><button id="ausspracheNeu">＋ Wort hinzufügen</button></div>
+    <h3>Satz ausprobieren</h3>
+    <div class="zeile"><input id="ausspracheSatz" class="aussprache-feld" style="flex:1" value="Licht ist 300.000 km/s schnell, z. B. 1,5 Sekunden bis zum Mond."><button id="ausspracheSatzTest">▶ Anhören</button></div>
+    <p class="klein" id="ausspracheGesprochen"></p>
+    <div class="zeile rechtsbuendig"><button class="haupt" id="ausspracheSpeichern">Speichern</button></div>
+  </div>
+</div>
+
+<div class="banner" id="banner" hidden><span id="bannerText"></span><button id="bannerJa">Neu laden</button><button id="bannerNein">Behalten</button></div>
+
+<script src="vendor/three.min.js"></script>
+<script src="js/texturen.js"></script>
+<script src="js/skript.js"></script>
+<script src="js/physik.js"></script>
+<script src="js/ablauf.js"></script>
+<script src="js/figuren.js"></script>
+<script src="js/wissen.js"></script>
+<script src="js/video.js"></script>
+<script src="js/welt2d.js"></script>
+<script src="js/urzeit.js"></script>
+<script src="js/autokorrektur.js"></script>
+<script src="js/klartext.js"></script>
+<script src="js/szene.js"></script>
+<script src="js/ton.js"></script>
+<script src="js/ui.js"></script>
+</body>
+</html>

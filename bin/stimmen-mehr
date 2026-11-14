@@ -1,0 +1,13 @@
+#!/usr/bin/env bash
+# Lädt weitere deutsche Stimmen für Blockfilm (Piper). Alles bleibt in ~/.local/share/blockfilm/piper/stimmen.
+set -e
+S="$HOME/.local/share/blockfilm/piper/stimmen"
+mkdir -p "$S"; cd "$S"
+B=https://huggingface.co/rhasspy/piper-voices/resolve/v1.0.0/de/de_DE
+for v in thorsten_emotional/medium kerstin/low ramona/low karlsson/low pavoque/low eva_k/x_low; do
+  name="${v%/*}"; q="${v#*/}"; f="de_DE-$name-$q"
+  for ext in onnx onnx.json; do
+    [ -s "$f.$ext" ] || { echo "Lade $f.$ext …"; curl -fSL -o "$f.$ext" "$B/$name/$q/$f.$ext"; }
+  done
+done
+echo "Fertig! In Blockfilm kannst du die Stimme jetzt unten bei 🗣 auswählen und mit ▶ anhören."

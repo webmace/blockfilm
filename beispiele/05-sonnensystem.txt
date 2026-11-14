@@ -1,0 +1,21 @@
+# Wissenschaft: Das Sonnensystem
+film 4k fps 30 titel "Unser Sonnensystem"
+welt leer
+himmel nacht
+musik episch
+
+sonnensystem bei 0 0 0 mit namen tempo 1
+titel "Unser Sonnensystem" 3
+kamera bei 0 18 30 schaut auf 0 0 0
+kamera faehrt zu 0 30 2 schaut auf 0 0 0 in 6
+text "Die Sonne ist ein riesiger Stern" 4 unten
+warte 4
+kamera folgt erde abstand 4 hoehe 1.5
+text "Die Erde braucht 1 Jahr für eine Runde" 5 unten
+warte 5
+kamera folgt jupiter abstand 6 hoehe 2
+text "Jupiter ist der größte Planet" 4 unten
+warte 4
+kamera kreist um sonne radius 34 hoehe 14 in 8
+diagramm "Durchmesser (tausend km)" werte 4.9 12.1 12.7 6.8 140 116 51 49 namen "Me" "Ve" "Er" "Ma" "Ju" "Sa" "Ur" "Ne" rechts 8
+ausblenden 1.5

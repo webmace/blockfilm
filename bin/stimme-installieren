@@ -1,0 +1,20 @@
+#!/usr/bin/env bash
+# Installiert die Vorlese-Stimme für Blockfilm (Piper + deutsche Stimme "Thorsten", hohe Qualität).
+# Alles bleibt in ~/.local/share/blockfilm/piper – kein Passwort nötig.
+set -e
+D="$HOME/.local/share/blockfilm/piper"
+mkdir -p "$D/dl" "$D/stimmen"
+cd "$D"
+if [ ! -x piper/piper ]; then
+  [ -f dl/piper.tar.gz ] || curl -fSL -o dl/piper.tar.gz https://github.com/rhasspy/piper/releases/download/2023.11.14-2/piper_linux_x86_64.tar.gz
+  tar -xzf dl/piper.tar.gz
+fi
+cd stimmen
+B=https://huggingface.co/rhasspy/piper-voices/resolve/v1.0.0/de/de_DE/thorsten/high
+for f in de_DE-thorsten-high.onnx de_DE-thorsten-high.onnx.json; do
+  [ -s "$f" ] || { echo "Lade $f …"; curl -fSL -o "$f" "$B/$f"; }
+done
+echo "Teste die Stimme …"
+echo "Hallo! Ich bin die Stimme von Blockfilm." | "$D/piper/piper" --model de_DE-thorsten-high.onnx --output_file /tmp/blockfilm-stimmtest.wav >/dev/null 2>&1
+command -v pw-play >/dev/null && pw-play /tmp/blockfilm-stimmtest.wav 2>/dev/null || true
+echo "Fertig! Die Stimme ist installiert. In Blockfilm liest der Sprecher jetzt vor."

@@ -1,0 +1,26 @@
+# Physik-Show: TNT, Kettenreaktion und fliegende Blöcke
+film 4k fps 30 titel "TNT Physik"
+welt flach groesse 64
+himmel abend
+musik spannend
+
+figur forscher hemd weiss hose grau brille bei -12 2 blick 90
+
+# ein Turm aus Steinziegeln und eine Reihe TNT
+baue turm 0 -2 hoehe 10
+baue tntfeld 6 -2 breite 3
+fuelle sand -4 0 4 -2 3 6
+
+kamera bei -16 6 10 schaut auf 0 3 -2
+forscher sagt "Heute testen wir: Wie weit fliegen Blöcke bei einer Explosion?"
+forscher nimmt fackel
+forscher zeigt auf 6 0 -2
+text "Kettenreaktion!" 3 oben
+tnt 3 0 -2 zuender 2
+& kamera faehrt zu -10 8 14 schaut auf 2 2 -2 in 2
+kamera wackeln 1 in 1.5
+warte 3
+blockregen bunt -6 -8 6 4 anzahl 60 hoehe 20 in 4
+& kamera kreist um 0 2 0 radius 18 hoehe 8 in 8
+forscher sagt "Faszinierend!"
+ausblenden 1.5

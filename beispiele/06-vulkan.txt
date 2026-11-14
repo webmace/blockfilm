@@ -1,0 +1,19 @@
+# Erdkunde: Ein Vulkan bricht aus
+film 4k fps 30 titel "Vulkanausbruch"
+welt huegel seed 9 groesse 64
+himmel bewoelkt
+musik spannend
+
+figur forscherin hemd orange hose dunkelblau bei -14 6 blick 120
+vulkan 0 0 hoehe 10
+kamera bei -22 10 22 schaut auf 0 6 0
+forscherin sagt "Unter dem Vulkan ist flüssiges Gestein: Magma."
+tafel "Warum bricht ein Vulkan aus?" "Magma steigt nach oben" "Druck wird immer größer" "Bumm – Lava und Asche!" rechts 7
+warte 6
+vulkan 0 0 hoehe 10 ausbruch in 7
+& kamera faehrt zu -30 16 30 schaut auf 0 8 0 in 6
+& himmel gewitter in 3
+forscherin erschrickt
+forscherin laeuft zu -20 14
+warte 3
+ausblenden 1.5

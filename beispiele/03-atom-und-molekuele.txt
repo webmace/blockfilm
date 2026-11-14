@@ -1,0 +1,26 @@
+# Wissenschaft: Woraus besteht alles?
+film 4k fps 30 titel "Atome und Moleküle"
+welt flach boden quarz groesse 40
+himmel nacht
+musik ruhig
+
+figur professorin hemd lila haare grau brille bei -5 0 blick 45
+
+titel "Woraus besteht alles?" 3 karte
+kamera bei -2 3 8 schaut auf -1 2 0
+professorin sagt "Alles um uns herum besteht aus winzigen Teilchen: Atomen!"
+atom kohlenstoff bei 2 3 0 mit namen
+kamera faehrt zu 2 3.5 5 schaut auf 2 3 0 in 2
+tafel "Ein Atom hat:" "Protonen (rot) im Kern" "Neutronen (grau) im Kern" "Elektronen (blau) außen herum" rechts 8
+warte 6
+verstecke kohlenstoff
+molekuel wasser bei 2 3 0 groesse 1.5
+beschriftung "Sauerstoff" bei 2 3.4 0 farbe rot
+beschriftung "Wasserstoff" bei 3.1 2.4 0
+formel "H₂O" "2 Wasserstoff + 1 Sauerstoff = Wasser" unten 5
+warte 5
+verstecke alles
+molekuel dna bei 2 3.5 0 groesse 1.2
+kamera kreist um 2 3.5 0 radius 6 hoehe 1 in 8
+& professorin sagt "Und so sieht die DNA aus – der Bauplan des Lebens."
+ausblenden 1
