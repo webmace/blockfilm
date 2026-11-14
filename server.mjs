@@ -7,7 +7,7 @@ import http from 'node:http';
 import fs from 'node:fs';
 import path from 'node:path';
 import os from 'node:os';
-import { spawn } from 'node:child_process';
+import { spawn, execFile } from 'node:child_process';
 import crypto from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 import { kiSkript, kiBereit, einstellungenSchreiben, kiAussprache } from './ki.mjs';
@@ -319,6 +319,18 @@ async function anfrage(req, res) {
       res.writeHead(200, { 'content-type': TYPEN[path.extname(f).toLowerCase()] || 'application/octet-stream' });
       return res.end(daten);
     }
+    if (p === '/api/exporte' && req.method === 'GET') return json(res, await exporteLesen());
+    if (p === '/api/exporte/stopp' && req.method === 'POST') {
+      const o = JSON.parse((await koerper(req)).toString('utf8'));
+      if (o.nacht) { // ganzen Nacht-Export abbrechen (der laufende Film wird mit gestoppt)
+        await new Promise(ok => execFile('systemctl', ['--user', 'stop', 'blockfilm-nachtfilme.service', 'blockfilm-nachtfilme.timer'], () => ok()));
+      }
+      const laufend = (await exporteLesen()).laufend;
+      const ziel = laufend.find(e => e.pid === Number(o.pid));
+      if (o.pid && !ziel) return json(res, { ok: false, fehler: 'Dieser Export läuft nicht (mehr).' });
+      if (ziel) try { process.kill(ziel.pid, 'SIGTERM'); } catch (e) { return json(res, { ok: false, fehler: e.message }); }
+      return json(res, { ok: true });
+    }
     if (p === '/api/oeffnen' && req.method === 'POST') {
       const o = JSON.parse((await koerper(req)).toString('utf8'));
       spawn('xdg-open', [o.pfad], { detached: true, stdio: 'ignore' }).unref();
@@ -375,7 +387,10 @@ async function anfrage(req, res) {
     }
     if (p === '/api/fortschritt' && req.method === 'POST') {
       const o = JSON.parse((await koerper(req)).toString('utf8'));
-      if (renderModus) process.stdout.write(`\r${o.text}            `);
+      if (renderModus) {
+        process.stdout.write(`\r${o.text}            `);
+        try { fs.mkdirSync(EXPORT_STATUS, { recursive: true }); fs.writeFileSync(path.join(EXPORT_STATUS, process.pid + '.json'), JSON.stringify({ pid: process.pid, skript: skriptDatei, ziel: ausDatei, text: o.text, start: renderStart, zeit: Date.now() })); } catch {}
+      }
       return json(res, { ok: true });
     }
     if (p === '/api/fertig' && req.method === 'POST') {
@@ -404,8 +419,83 @@ async function anfrage(req, res) {
 }
 
 let browser = null;
+// ---------- Übersicht über alle Exporte (auch die im Hintergrund) ----------
+const EXPORT_STATUS = path.join(os.homedir(), '.cache', 'blockfilm', 'exporte');
+const renderStart = Date.now();
+const NACHT_SKRIPTE = path.join(os.homedir(), 'Blockfilm', 'Nachtfilme');
+const ausfuehren = (cmd, a) => new Promise(ok => execFile(cmd, a, { timeout: 4000 }, (e, out) => ok(e ? '' : String(out))));
+function fortschrittAus(text) {
+  const m = /Bild (\d+) von (\d+)/.exec(text || '');
+  const rest = /noch etwa ([\d]+ (?:min|s))/.exec(text || '');
+  return { anteil: m ? +m[1] / +m[2] : null, bild: m ? +m[1] : null, bilder: m ? +m[2] : null, rest: rest ? rest[1] : null };
+}
+function filmName(datei) {
+  const n = path.basename(String(datei || '')).replace(/\.teil\.mp4$|\.mp4$|\.txt$/g, '');
+  const th = { geister: 'Geister / durch Wände', himmelblau: 'Warum ist der Himmel blau?', umlaufbahn: 'Warum fällt der Mond nicht herunter?', koerper: 'Wie funktioniert unser Körper?', tagundnacht: 'Tag und Nacht', schwarzesloch: 'Schwarzes Loch', herbst: 'Bunte Blätter im Herbst', klima: 'Was ist Klima?', mathe: 'Wie funktioniert Mathe?', viren: 'Viren und Krankheiten', dinos: 'Dinosaurier und Erdzeitalter', technik: 'Handys, Computer und Tablets' };
+  return th[n] || n;
+}
+// fertige MP4 (mit +faststart) haben den Index "moov" ganz vorne; abgebrochene haben ihn nicht
+const heilCache = new Map();
+function videoHeil(datei, st) {
+  const k = datei + '|' + st.mtimeMs + '|' + st.size;
+  if (heilCache.has(k)) return heilCache.get(k);
+  let ok = false;
+  try { const fd = fs.openSync(datei, 'r'); const b = Buffer.alloc(Math.min(st.size, 1 << 20)); fs.readSync(fd, b, 0, b.length, 0); fs.closeSync(fd); ok = b.includes('moov'); } catch {}
+  heilCache.set(k, ok);
+  return ok;
+}
+async function exporteLesen() {
+  const laufend = [];
+  // 1. Exporte ohne Fenster (Kommandozeile, Nacht-Export)
+  const ps = await ausfuehren('ps', ['-eo', 'pid=,etimes=,args=']);
+  for (const z of ps.split('\n')) {
+    const m = /^\s*(\d+)\s+(\d+)\s+(.*)$/.exec(z);
+    if (!m || !/server\.mjs/.test(m[3]) || !/--render/.test(m[3])) continue;
+    const pid = +m[1], args = m[3].split(/\s+/);
+    const oi = args.indexOf('-o');
+    const ziel = oi >= 0 ? args[oi + 1] : null;
+    const skript = args[args.indexOf('--render') + 1];
+    let text = '';
+    try { text = JSON.parse(fs.readFileSync(path.join(EXPORT_STATUS, pid + '.json'), 'utf8')).text; } catch {}
+    if (!text && ziel) {
+      const ordner = path.dirname(ziel), name = path.basename(ziel).replace(/\.teil\.mp4$|\.mp4$/, '');
+      for (const log of [path.join(ordner, '.' + name + '-lauf.txt'), path.join(ordner, '.letzter-lauf.txt')]) {
+        try { const st = fs.statSync(log); if (Date.now() - st.mtimeMs > 120000) continue; const t = fs.readFileSync(log, 'utf8'); text = t.slice(-400).split('\r').filter(x => x.trim()).pop() || ''; if (text) break; } catch {}
+      }
+    }
+    laufend.push({ pid, art: 'hintergrund', name: filmName(ziel || skript), ziel, skript, seit: +m[2], text: text.trim(), ...fortschrittAus(text) });
+  }
+  // 2. Export im App-Fenster
+  if (video) laufend.push({ pid: null, art: 'fenster', name: 'Export im Blockfilm-Fenster', ziel: video.ziel || null, text: 'läuft im Fenster', anteil: null });
+  // 3. Nacht-Export
+  const naechster = (await ausfuehren('systemctl', ['--user', 'show', 'blockfilm-nachtfilme.timer', '-p', 'NextElapseUSecRealtime', '--value'])).trim();
+  const dienstAktiv = (await ausfuehren('systemctl', ['--user', 'is-active', 'blockfilm-nachtfilme.service'])).trim() === 'active';
+  const ausOrdner = path.join(VIDEOS, 'Nachtfilme');
+  let warteschlange = [];
+  try {
+    const reihenfolge = ['geister', 'himmelblau', 'umlaufbahn', 'koerper', 'tagundnacht', 'schwarzesloch', 'herbst', 'klima', 'mathe', 'viren', 'dinos', 'technik'];
+    const da = fs.readdirSync(NACHT_SKRIPTE).filter(f => f.endsWith('.txt')).map(f => f.slice(0, -4));
+    warteschlange = reihenfolge.filter(n => da.includes(n)).map(n => ({ datei: n, name: filmName(n), fertig: fs.existsSync(path.join(ausOrdner, n + '.mp4')), laeuft: laufend.some(e => e.ziel && path.basename(e.ziel).startsWith(n + '.')) }));
+  } catch {}
+  // 4. fertige Videos
+  const fertig = [];
+  for (const ordner of [VIDEOS, ausOrdner]) {
+    try {
+      for (const f of fs.readdirSync(ordner)) {
+        if (!f.endsWith('.mp4') || f.endsWith('.teil.mp4')) continue;
+        const st = fs.statSync(path.join(ordner, f));
+        fertig.push({ datei: path.join(ordner, f), name: filmName(f), groesse: st.size, zeit: st.mtimeMs, kaputt: !videoHeil(path.join(ordner, f), st) });
+      }
+    } catch {}
+  }
+  fertig.sort((a, b) => b.zeit - a.zeit);
+  return { laufend, nacht: { geplant: naechster && naechster !== 'n/a' ? naechster : null, aktiv: dienstAktiv, warteschlange }, fertig: fertig.slice(0, 30) };
+}
+
 function beenden(code = 0) {
   if (browser) try { browser.kill('SIGTERM'); } catch {}
+  if (video) try { video.proc.kill('SIGKILL'); } catch {}
+  if (renderModus) try { fs.rmSync(path.join(EXPORT_STATUS, process.pid + '.json'), { force: true }); } catch {}
   if (tonDatei) try { fs.rmSync(tonDatei, { force: true }); } catch {}
   setTimeout(() => process.exit(code), 200);
 }

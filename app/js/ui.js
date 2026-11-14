@@ -827,6 +827,51 @@
     else if ((e.key === 'f' || e.key === 'F') && !e.ctrlKey && !e.altKey && !imSchreibfeld()) { e.preventDefault(); vollbild(); }
   });
 
+  // ---------- Übersicht aller Exporte (auch Hintergrund und Nacht-Export) ----------
+  const WTAGE = ['So', 'Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa'];
+  const zeitText = ms => { const d = new Date(ms); return `${WTAGE[d.getDay()]} ${String(d.getDate()).padStart(2, '0')}.${String(d.getMonth() + 1).padStart(2, '0')}. ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`; };
+  async function exporteAktualisieren() {
+    let d;
+    try { d = await api('/api/exporte'); } catch { return; }
+    const n = d.laufend.length;
+    $('exporteZahl').hidden = !n; $('exporteZahl').textContent = n;
+    if ($('exporte').hidden) return;
+    // läuft gerade
+    $('exLaufend').innerHTML = n ? d.laufend.map(e => `<div class="ex-zeile">
+        <span class="ex-name">${esc(e.name)}</span>
+        <div class="balken"><div style="width:${e.anteil != null ? (e.anteil * 100).toFixed(1) : 0}%"></div></div>
+        <span class="ex-info">${e.anteil != null ? Math.round(e.anteil * 100) + ' % · ' : ''}${e.rest ? 'noch etwa ' + esc(e.rest) : esc(e.text || 'startet …')}</span>
+        ${e.pid ? `<button data-stopp="${e.pid}" title="Diesen Export abbrechen">⏹ Stopp</button>` : '<button data-zeige="1">Anzeigen</button>'}
+      </div>`).join('') : '<div class="ex-leer">Gerade wird nichts gespeichert.</div>';
+    // Nacht-Export
+    const N = d.nacht;
+    let t = '';
+    const m = N.geplant && /(\d{4})-(\d{2})-(\d{2}) (\d{2}):(\d{2})/.exec(N.geplant);
+    if (N.aktiv) t += '<div class="ex-leer">Der Nacht-Export läuft gerade.</div>';
+    else if (m) t += `<div class="ex-leer">Startet ${zeitText(new Date(+m[1], +m[2] - 1, +m[3], +m[4], +m[5]).getTime())} Uhr. Er wartet, bis andere Exporte fertig sind, und speichert dann alle Filme, die noch fehlen.</div>`;
+    else t += '<div class="ex-leer">Kein Nacht-Export geplant.</div>';
+    if (N.warteschlange.length) t += '<div class="ex-liste">' + N.warteschlange.map(w => `<span class="${w.fertig ? 'fertig' : w.laeuft ? 'laeuft' : ''}">${w.fertig ? '✓' : w.laeuft ? '⏳' : '•'} ${esc(w.name)}</span>`).join('') + '</div>';
+    if (N.aktiv || m) t += '<button data-nachtstopp="1" title="Den geplanten bzw. laufenden Nacht-Export ganz abbrechen">Nacht-Export abbrechen</button>';
+    $('exNacht').innerHTML = t;
+    // fertige Videos
+    $('exFertig').innerHTML = d.fertig.length ? d.fertig.map(f => `<div class="ex-zeile">
+        <span class="ex-name">${esc(f.name)}</span>
+        <span class="ex-info">${zeitText(f.zeit)} Uhr · ${(f.groesse / 1048576).toFixed(0)} MB</span>
+        ${f.kaputt ? '<span class="ex-info" title="Dieser Export wurde abgebrochen. Die Datei lässt sich nicht abspielen und kann gelöscht werden.">⚠ unvollständig</span>' : `<button data-spielen="${esc(f.datei)}">▶ Abspielen</button>`}
+      </div>`).join('') : '<div class="ex-leer">Noch keine fertigen Videos.</div>';
+  }
+  $('b-exporte').onclick = () => { $('exporte').hidden = false; exporteAktualisieren(); };
+  $('ex-ordner2').onclick = async () => { try { post('/api/oeffnen', { pfad: (await api('/api/info')).videos }); } catch {} };
+  $('exporte').addEventListener('click', async e => {
+    const b = e.target.closest('button'); if (!b) return;
+    if (b.dataset.spielen) post('/api/oeffnen', { pfad: b.dataset.spielen });
+    else if (b.dataset.zeige) { $('exporte').hidden = true; $('export').hidden = false; }
+    else if (b.dataset.stopp) { if (confirm('Diesen Export wirklich abbrechen? Das bisher Gespeicherte geht verloren.')) { await post('/api/exporte/stopp', { pid: +b.dataset.stopp }); exporteAktualisieren(); } }
+    else if (b.dataset.nachtstopp) { if (confirm('Den Nacht-Export ganz abbrechen? Fertige Videos bleiben erhalten.')) { await post('/api/exporte/stopp', { nacht: true }); exporteAktualisieren(); } }
+  });
+  setInterval(() => { if (!$('exporte').hidden || Date.now() % 15000 < 3000) exporteAktualisieren(); }, 3000);
+  setTimeout(exporteAktualisieren, 1500);
+
   // ---------- Video-Export ----------
   $('b-video').onclick = () => {
     if (!S.F) return;

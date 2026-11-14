@@ -128,3 +128,16 @@ h3 { font-size: 13px; color: var(--leise); margin: 14px 0 6px; text-transform: u
 .vb-hinweis { display: none; position: absolute; top: 18px; left: 50%; transform: translateX(-50%); background: rgba(0,0,0,0.6); color: #fff; padding: 8px 16px; border-radius: 20px; font-size: 15px; z-index: 2; transition: opacity 1s; pointer-events: none; }
 #buehne:fullscreen .vb-hinweis { display: block; }
 #buehne:fullscreen.ruhig { cursor: none; }
+
+.abzeichen { display: inline-block; min-width: 18px; padding: 0 5px; margin-left: 4px; border-radius: 9px; background: #e8a33a; color: #1a1a1a; font-size: 12px; font-weight: 700; line-height: 18px; text-align: center; }
+.abzeichen[hidden] { display: none; }
+.ex-titel { margin: 14px 0 6px; font-size: 15px; }
+.ex-zeile { display: flex; align-items: center; gap: 10px; padding: 7px 10px; border: 1px solid var(--rand); border-radius: 8px; margin-bottom: 6px; background: #1b1e23; }
+.ex-zeile .ex-name { font-weight: 600; flex: 0 0 auto; }
+.ex-zeile .ex-info { flex: 1; color: #aab; font-size: 13px; min-width: 0; }
+.ex-zeile .balken { flex: 1; min-width: 120px; }
+.ex-leer { color: #889; font-size: 13px; padding: 4px 2px; }
+.ex-liste { display: flex; flex-wrap: wrap; gap: 6px; margin: 6px 0; }
+.ex-liste span { font-size: 13px; padding: 3px 8px; border-radius: 12px; background: #23272e; border: 1px solid var(--rand); }
+.ex-liste span.fertig { border-color: var(--gruen); color: #9fe0a0; }
+.ex-liste span.laeuft { border-color: #e8a33a; color: #f0c070; }
