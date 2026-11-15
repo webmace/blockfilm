@@ -268,7 +268,7 @@ ${HF.SKRIPTE.map(s => `<script src="${basis}${s}"></script>`).join('\n')}
         const schw = 1.6 + ((e.t0 * 3.1) % 0.8);
         tl.fromTo(wip, { rotation: -1.6 }, { rotation: 1.6, duration: schw, ease: 'sine.inOut', yoyo: true, repeat: wdh(leben, schw), immediateRender: false, transformOrigin: '0px 0px' }, e.t0);
       } else if (e.o.typ === 'schleim') {
-        // Glibbi bewegt sich selbst (HF.bewegung.schleim)
+        // Glib bewegt sich selbst (HF.bewegung.schleim)
       } else if (e.o.typ === 'koerper') {
         if (n > 0) tl.fromTo(wip, { scaleY: 1, transformOrigin: '0px 0px' }, { scaleY: 1.012, duration: halb * 1.6, ease: 'sine.inOut', yoyo: true, repeat: wdh(leben - ein, halb * 1.6), immediateRender: false }, e.t0 + ein);
       } else if (e.o.typ === 'dino' && !['plesiosaurus', 'ichthyosaurus', 'mosasaurus', 'flugsaurier', 'trilobit', 'fisch', 'qualle'].includes(e.o.art)) {

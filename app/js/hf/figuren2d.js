@@ -231,7 +231,7 @@
     if (maul) c.r.setAttribute('transform', `translate(${f3(Math.sin(t * 60) * 0.004 * maul)} 0) scale(${dir} 1)`);
   };
 
-  // ---------- Maskottchen „Glibbi“: kleiner bunter Schleim (Ursprung = Fußpunkt, Höhe ≈ 0,85 · o.r) ----------
+  // ---------- Maskottchen „Glib“: kleiner bunter Schleim (Ursprung = Fußpunkt, Höhe ≈ 0,85 · o.r) ----------
   // Beim Heranzoomen wird er "ein bisschen 3D": Rundungs-Schatten, Glanz und Bläschen im Inneren mit Parallaxe.
   const SCHLEIM_FORM = 'M-0.56 0 C-0.66 -0.06 -0.62 -0.3 -0.55 -0.42 C-0.46 -0.68 -0.26 -0.84 0 -0.85 C0.26 -0.84 0.46 -0.68 0.55 -0.42 C0.62 -0.3 0.66 -0.06 0.56 0 C0.5 0.035 0.42 0.02 0.36 0.04 C0.3 0.06 0.24 0.02 0.12 0.03 C0 0.045 -0.12 0.01 -0.24 0.035 C-0.36 0.06 -0.46 0.03 -0.56 0 Z';
   OB.schleim = (o, stil, id) => {

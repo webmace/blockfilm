@@ -1,22 +1,22 @@
-// Blockfilm – Maskottchen „Glibbi“: ein kleiner bunter Schleim, der durch die Filme begleitet.
-//   maskottchen2d [name] bei x y [groesse 7] [schweben]   Glibbi selbst hinstellen (dann gibt es keine automatischen Auftritte)
+// Blockfilm – Maskottchen „Glib“: ein kleiner bunter Schleim, der durch die Filme begleitet.
+//   maskottchen2d [name] bei x y [groesse 7] [schweben]   Glib selbst hinstellen (dann gibt es keine automatischen Auftritte)
 //   maskottchen aus                                         keine automatischen Auftritte in diesem Film
-// Ohne eigene Angabe taucht Glibbi in jedem 2D-Film nach jeder Kapitelkarte in einer freien Ecke auf und hüpft nach
+// Ohne eigene Angabe taucht Glib in jedem 2D-Film nach jeder Kapitelkarte in einer freien Ecke auf und hüpft nach
 // ein paar Sätzen wieder hinaus. Die Zeichnung im neuen Stil steht in hf/figuren2d.js (OB.schleim).
 (function () {
   const BF = (window.BF = window.BF || {});
   const Z = (BF.zusatz = BF.zusatz || {});
-  BF.MASKOTTCHEN_NAME = 'Glibbi';
+  BF.MASKOTTCHEN_NAME = 'Glib';
   const H = () => BF.w2dHelfer;
 
-  Z.maskottchen2d = Z.glibbi2d = Z.schleim2d = function (w, t, h) {
+  Z.maskottchen2d = Z.glib2d = Z.glibbi2d = Z.schleim2d = function (w, t, h) {
     const { w2d, nameOder, punkt, neuesObjekt } = H();
     const F = h.F;
     w2d(F);
     const gr = w.optZahl(['groesse'], 7);
-    w.optWort(['farbe']); // Farbe gibt es nicht: Glibbi ist immer bunt
+    w.optWort(['farbe']); // Farbe gibt es nicht: Glib ist immer bunt
     const schweben = w.flag(['schweben', 'schwebt', 'fliegt']);
-    const name = nameOder(w, 'glibbi');
+    const name = nameOder(w, 'glib');
     const p = punkt(w);
     neuesObjekt(F, { typ: 'schleim', name, t0: t, p, r: gr, schweben });
     return 0;
@@ -48,7 +48,7 @@
   });
   BF.nachKompilieren.push(function maskottchenAuto(F) {
     if (!F.w2d || F.maskottchenAus || (F.reihenfolge && F.reihenfolge.length)) return;
-    if (F.w2d.liste.some(o => o.typ === 'schleim')) return;      // das Skript stellt Glibbi selbst hin
+    if (F.w2d.liste.some(o => o.typ === 'schleim')) return;      // das Skript stellt Glib selbst hin
     const sp = (F.sprache || []).slice().sort((a, b) => a.t0 - b.t0);
     if (!sp.length) return;
     // Kapitelanfänge: nach jeder Kapitelkarte, sonst der Filmanfang
@@ -66,14 +66,14 @@
       // die freiere der beiden unteren Ecken
       const links = belegung(F, -42, y, start, ende), rechts = belegung(F, 42, y, start, ende);
       const x = links <= rechts ? -42 : 42, rand = x < 0 ? -58 : 58;
-      const o = neuesObjekt(F, { typ: 'schleim', name: 'glibbi_auto' + i, t0: start + 0.2, p: [rand, y], r: 6.5, schweben, auto: true });
+      const o = neuesObjekt(F, { typ: 'schleim', name: 'glib_auto' + i, t0: start + 0.2, p: [rand, y], r: 6.5, schweben, auto: true });
       o.segs.push({ typ: 'zu', t0: start + 0.2, t1: start + 1.1, von: [rand, y], zu: [x, y] });
       o.segs.push({ typ: 'zu', t0: ende - 0.9, t1: ende, von: [x, y], zu: [rand, y] });
       o.t1 = ende + 0.05;
     });
   });
 
-  // Mia (die frühere Begleitfigur) ist jetzt Glibbi
+  // Mia (die frühere Begleitfigur) ist jetzt Glib
   const altKind = Z.kind2d;
   Z.kind2d = Z.mensch2d = function (w, t, h) {
     if (w.pk && w.pk() === 'mia') {

@@ -63,6 +63,7 @@ const VORHER = [
 const WOERTER = [
   [/\b([Oo])range(n|ne|nen|ner|nes|ns|s)?\b/g, (m, o, e) => (e ? 'O-rangsche' + { n: 'n', ne: 'ne', nen: 'nen', ner: 'ner', nes: 'nes', ns: 'ns', s: 's' }[e] : 'O-rangsch')],
   [/\b([Oo])rangen(\w+)/g, (m, o, rest) => 'O-rangschen' + rest],
+  [/\bGlib(s)?\b/g, (m, e) => 'Glipp' + (e || '')], // unser Maskottchen, kurzes i wie in „glibberig“
   [/\bMinecraft\b/g, 'Meinkräft'], [/\bYouTube\b/gi, 'Jutjub'], [/\bCartoon\b/g, 'Kartuhn'], [/\bComputer\b/g, 'Kompjuter'],
   [/\bIsaac Newton\b/g, 'Eisäck Njuten'], [/\bNewtons?\b/g, m => (m.endsWith('s') ? 'Njutens' : 'Njuten')],
   [/\b(F|Ph)otosynthese\b/g, 'Fotosün-tehse'],

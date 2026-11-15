@@ -186,8 +186,8 @@ Jede Szene beginnt mit einem passenden `hintergrund`. Am Ende eines Kapitels all
 **Drehen mit kippe2d:** positive Zahl = gegen den Uhrzeigersinn. Eine aufrechte Figur liegt nach `kippe2d name auf 90` mit dem Kopf nach links und den Füßen nach rechts, nach `kippe2d name auf -90` mit dem Kopf nach rechts und den Füßen nach links. Soll etwas mit den Füßen zu einem Ziel rechts zeigen, nimm also 90.
 **Beschriften:** Teile eines Objekts beschriftest du mit `text2d "Füße" an astro 4 stelle unten` (stelle: oben, unten, links, rechts, mitte – das dreht mit, wenn das Objekt gekippt ist). Das ist viel genauer als ein `zeiger`. Wenn du doch einen `zeiger` oder `kreis` brauchst (Prozent-Angaben), rechne so um: Prozent-x = 50 + x, Prozent-y = 50 − 1,78 · y.
 
-### Maskottchen Glibbi
-`maskottchen2d glibbi bei -30 -11 groesse 7` – unser Maskottchen: ein kleiner bunter Schleim. Er wackelt, blinzelt, schaut zum Neuesten im Bild, bewegt den Mund, wenn gesprochen wird, und hüpft bei `bewege2d glibbi zu …`. Mit `schweben` schwebt er (z. B. im Weltraum oder unter Wasser). Ohne eigenes `maskottchen2d` taucht Glibbi nach jeder Kapitelkarte von selbst in einer freien Ecke auf; `maskottchen aus` schaltet das ab.
+### Maskottchen Glib
+`maskottchen2d glib bei -30 -11 groesse 7` – unser Maskottchen: ein kleiner bunter Schleim. Er wackelt, blinzelt, schaut zum Neuesten im Bild, bewegt den Mund, wenn gesprochen wird, und hüpft bei `bewege2d glib zu …`. Mit `schweben` schwebt er (z. B. im Weltraum oder unter Wasser). Ohne eigenes `maskottchen2d` taucht Glib nach jeder Kapitelkarte von selbst in einer freien Ecke auf; `maskottchen aus` schaltet das ab.
 Dinge, die es nur einmal gibt (Mond, Sonne, Erde, Mars …), stehen nie doppelt im Bild: kommt ein neuer Mond dazu, verschwindet der alte.
 
 ### Hintergründe
