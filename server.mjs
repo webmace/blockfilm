@@ -239,8 +239,11 @@ async function hfStarten(o) {
   }
   if (o.ton && tonDatei && fs.existsSync(tonDatei)) fs.copyFileSync(tonDatei, path.join(ordner, 'ton.wav'));
   if (!process.env.PRODUCER_HEADLESS_SHELL_PATH) { const c = chromiumPfad(); if (c) process.env.PRODUCER_HEADLESS_SHELL_PATH = c; }
+  // schneller: Grafikkarte benutzen, wenn sie geht (sonst fällt HyperFrames auf die CPU zurück), und mehrere Bilder parallel
+  if (!process.env.PRODUCER_BROWSER_GPU_MODE) process.env.PRODUCER_BROWSER_GPU_MODE = 'auto';
+  const worker = Number(process.env.BF_HF_WORKER) || Math.max(1, Math.min(3, os.cpus().length - 1));
   const { createRenderJob, executeRenderJob } = await import('@hyperframes/producer');
-  const job = createRenderJob({ fps: { num: fps, den: 1 }, quality: o.qualitaet === 'entwurf' ? 'draft' : 'standard', format: 'mp4' });
+  const job = createRenderJob({ fps: { num: fps, den: 1 }, quality: o.qualitaet === 'entwurf' ? 'draft' : 'standard', format: 'mp4', workers: worker });
   const abbruch = new AbortController();
   const J = hfJob = { ziel, ordner, abbruch, start: Date.now(), anteil: 0, text: 'Starte …', bild: null, bilder: null, fertig: false, ok: null, fehler: null, abgebrochen: false };
   executeRenderJob(job, ordner, ziel, (j, msg) => {

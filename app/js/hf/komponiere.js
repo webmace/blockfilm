@@ -140,6 +140,7 @@ html,body{margin:0;padding:0;background:#000;overflow:hidden}
 .ebene svg{display:block;width:100%;height:100%}
 .obj{position:absolute;left:0;top:0;width:0;height:0}
 .pos,.pop,.wip{position:absolute;left:0;top:0;width:0;height:0}
+.ebene,.pos{will-change:transform}
 .obj svg{position:absolute;overflow:visible}
 .zahl{position:absolute;left:0;top:0;transform:translate(-50%,-50%);white-space:nowrap;line-height:1;font-family:${S.titel},sans-serif;font-weight:${S.titelGewicht}}
 .zbild{display:flex;gap:0.08em}.zbild img{display:block;height:1.1em;width:1.1em}
