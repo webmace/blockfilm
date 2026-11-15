@@ -26,7 +26,7 @@ Erklärfilm-Generator: Claude schreibt ein Skript in einer deutschen Befehlsspra
 - **Alte Engine** (three.js + Canvas2D, `szene.js`): für alles mit 3D-Blockwelt, Figuren, Physik oder Videoclips. Bilder werden einzeln an ffmpeg geschickt (`/api/video/*`).
 
 ## Maskottchen Glib
-- `app/js/maskottchen.js` (Engine, beide Renderer): Befehl `maskottchen2d` (Typ `schleim`), `maskottchen aus`, automatische Auftritte nach jeder Kapitelkarte (Hook `BF.nachKompilieren`, Objekte mit `auto: true`). `kind2d mia` wird zu Glib (kleiner).
+- `app/js/maskottchen.js` (Engine, beide Renderer): Befehl `maskottchen2d` (Typ `schleim`), `maskottchen aus`, Glib als Erzähler: in jedem Kapitel fest in einer freien unteren Ecke, unabhängig von der Kamera (Hook `BF.nachKompilieren`, Objekte mit `auto: true`). `kind2d mia` wird zu Glib (kleiner).
 - Zeichnung und Verhalten im neuen Stil: `OB.schleim` / `HF.bewegung.schleim` in `hf/figuren2d.js`. Wird beim Heranzoomen räumlicher (Tiefe, Glanz, Bläschen-Parallaxe).
 - Einmalige Dinge (Mond, Sonne, Erde …, gleicher Name): `neuesObjekt` (welt2d.js) blendet das alte aus, wenn ein neues dazukommt.
 - SVG-Klassennamen nicht doppelt vergeben: `.schatten` ist für Planeten reserviert (wird zur Sonne gedreht).

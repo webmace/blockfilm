@@ -187,7 +187,7 @@ Jede Szene beginnt mit einem passenden `hintergrund`. Am Ende eines Kapitels all
 **Beschriften:** Teile eines Objekts beschriftest du mit `text2d "Füße" an astro 4 stelle unten` (stelle: oben, unten, links, rechts, mitte – das dreht mit, wenn das Objekt gekippt ist). Das ist viel genauer als ein `zeiger`. Wenn du doch einen `zeiger` oder `kreis` brauchst (Prozent-Angaben), rechne so um: Prozent-x = 50 + x, Prozent-y = 50 − 1,78 · y.
 
 ### Maskottchen Glib
-`maskottchen2d glib bei -30 -11 groesse 7` – unser Maskottchen: ein kleiner bunter Schleim. Er wackelt, blinzelt, schaut zum Neuesten im Bild, bewegt den Mund, wenn gesprochen wird, und hüpft bei `bewege2d glib zu …`. Mit `schweben` schwebt er (z. B. im Weltraum oder unter Wasser). Ohne eigenes `maskottchen2d` taucht Glib nach jeder Kapitelkarte von selbst in einer freien Ecke auf; `maskottchen aus` schaltet das ab.
+`maskottchen2d glib bei -30 -11 groesse 7` – unser Maskottchen: ein kleiner bunter Schleim. Er wackelt, blinzelt, schaut zum Neuesten im Bild, bewegt den Mund, wenn gesprochen wird, und hüpft bei `bewege2d glib zu …`. Mit `schweben` schwebt er (z. B. im Weltraum oder unter Wasser). Ohne eigenes `maskottchen2d` erzählt Glib den Film: er steht in jedem Kapitel in einer freien unteren Ecke und spricht mit; `maskottchen aus` schaltet das ab.
 Dinge, die es nur einmal gibt (Mond, Sonne, Erde, Mars …), stehen nie doppelt im Bild: kommt ein neuer Mond dazu, verschwindet der alte.
 
 ### Hintergründe

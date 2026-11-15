@@ -938,8 +938,9 @@
       if (t < o.t0 || t >= o.t1 || o.typ === 'loch') continue;
       if (opt.objLassen && opt.objLassen(o)) continue;
       const p = pos(F, o, t);
-      const sx = X(p[0]), sy = Y(p[1]);
-      let r = o.r * s;
+      const fest = o.typ === 'schleim' && o.auto; // der Erzähler (Glib) steht fest im Bild
+      const sx = fest ? w / 2 + p[0] * w / 100 : X(p[0]), sy = fest ? h / 2 - p[1] * w / 100 : Y(p[1]);
+      let r = o.r * (fest ? w / 100 : s);
       const ein = clamp((t - o.t0) / 0.4, 0, 1) * clamp((o.t1 - t) / 0.4, 0, 1);
       ctx.save();
       ctx.globalAlpha = o.kollaps ? 1 : ein;

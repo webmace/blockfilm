@@ -262,7 +262,7 @@ ${[-1, 1].map(sg => `<ellipse cx="${f3(sg * 0.33)}" cy="-0.3" rx="0.07" ry="0.04
       h: el.querySelector('.huepf'), w: el.querySelector('.wackel'), bl: el.querySelector('.blasen'), tiefe: el.querySelector('.tiefe'), glanz: el.querySelector('.glanz'),
       augen: [...el.querySelectorAll('.auge')], pup: [...el.querySelectorAll('.pupille')], mo: el.querySelector('.mo'), zunge: el.querySelector('.zunge'), schatten: el.querySelector('.bodenschatten'),
     });
-    const K = I.kamera(F, t);
+    const K = o.auto ? { x: 0, y: 0, z: 1 } : I.kamera(F, t); // der Erzähler steht fest im Bild
     // Hüpfen beim Laufen, sonst sanft schweben oder wackeln
     let hy = 0, quetsch = Math.sin(t * 2.2 + o.r) * 0.035;
     const seg = (o.segs || []).find(s => s.typ === 'zu' && t >= s.t0 && t < s.t1);

@@ -357,9 +357,11 @@ ${HF.SKRIPTE.map(s => `<script src="${basis}${s}"></script>`).join('\n')}
       for (const { e, p, sch } of objEl) {
         if (t < e.t0 || t >= e.t1) continue;
         const o = e.o, q = I.pos(F, o.typ === 'huelle' && F.w2d.obj[o.planet] ? F.w2d.obj[o.planet] : o, t);
-        const X = W / 2 + (q[0] - K.x) * s, Y = H / 2 - (q[1] - K.y) * s;
+        // der Erzähler (Glib) steht fest im Bild, die Kamera bewegt ihn nicht
+        const fest = o.typ === 'schleim' && o.auto, kx = fest ? 0 : K.x, ky = fest ? 0 : K.y, ks = fest ? W / 100 : s;
+        const X = W / 2 + (q[0] - kx) * ks, Y = H / 2 - (q[1] - ky) * ks;
         const rot = o.kipp ? -I.wertBei(o.kipp, t, 0) : 0;
-        p.style.transform = `translate(${r2(X)}px,${r2(Y)}px) rotate(${r2(rot)}deg) scale(${r2(K.z)})`;
+        p.style.transform = `translate(${r2(X)}px,${r2(Y)}px) rotate(${r2(rot)}deg) scale(${r2(fest ? 1 : K.z)})`;
         if (HF.bewegung && HF.bewegung[o.typ]) HF.bewegung[o.typ](p, o, t, F, q, I);
         if (o.typ === 'zahl' && o.ohneRand) {
           const z = p._zahl || (p._zahl = p.querySelector('.zahl'));

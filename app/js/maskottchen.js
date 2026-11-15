@@ -1,8 +1,7 @@
 // Blockfilm – Maskottchen „Glib“: ein kleiner bunter Schleim, der durch die Filme begleitet.
 //   maskottchen2d [name] bei x y [groesse 7] [schweben]   Glib selbst hinstellen (dann gibt es keine automatischen Auftritte)
 //   maskottchen aus                                         keine automatischen Auftritte in diesem Film
-// Ohne eigene Angabe taucht Glib in jedem 2D-Film nach jeder Kapitelkarte in einer freien Ecke auf und hüpft nach
-// ein paar Sätzen wieder hinaus. Die Zeichnung im neuen Stil steht in hf/figuren2d.js (OB.schleim).
+// Ohne eigene Angabe erzählt Glib jeden 2D-Film: er steht in jedem Kapitel in einer freien unteren Ecke und spricht mit. Die Zeichnung im neuen Stil steht in hf/figuren2d.js (OB.schleim).
 (function () {
   const BF = (window.BF = window.BF || {});
   const Z = (BF.zusatz = BF.zusatz || {});
@@ -46,30 +45,49 @@
     if (!F.w2d) return;
     for (const tx of F.w2d.texte) if (tx.an && tx.an.obj && F.w2d.obj[tx.an.obj] && F.w2d.obj[tx.an.obj].typ === 'schleim' && /^mia$/i.test(tx.text)) tx.text = BF.MASKOTTCHEN_NAME;
   });
-  BF.nachKompilieren.push(function maskottchenAuto(F) {
+  // Glib erzählt: in jedem Kapitel steht er in einer freien unteren Ecke und spricht mit (Mund bewegt sich mit der Stimme).
+  // Wird seine Ecke belegt, hüpft er hinaus und kommt auf der anderen Seite wieder herein.
+  BF.nachKompilieren.push(function maskottchenErzaehler(F) {
     if (!F.w2d || F.maskottchenAus || (F.reihenfolge && F.reihenfolge.length)) return;
     if (F.w2d.liste.some(o => o.typ === 'schleim')) return;      // das Skript stellt Glib selbst hin
     const sp = (F.sprache || []).slice().sort((a, b) => a.t0 - b.t0);
     if (!sp.length) return;
-    // Kapitelanfänge: nach jeder Kapitelkarte, sonst der Filmanfang
-    const anfaenge = F.texte.filter(x => x.karte).map(x => x.t1).sort((a, b) => a - b);
-    if (!anfaenge.length || sp[0].t0 < anfaenge[0] - 0.1) anfaenge.unshift(Math.max(0, sp[0].t0 - 0.6));
-    const { neuesObjekt } = H();
-    anfaenge.forEach((start, i) => {
-      const saetze = sp.filter(s => s.t0 >= start - 0.05).slice(0, 3);
-      if (!saetze.length) return;
-      const naechster = anfaenge[i + 1] ?? Infinity;
-      const ende = Math.min(saetze[saetze.length - 1].t1 + 0.6, naechster - 0.3, F.dauer - 0.2);
-      if (ende - start < 2.5) return;
+    const karten = F.texte.filter(x => x.karte).sort((a, b) => a.t0 - b.t0);
+    // Kapitel: von einer Kapitelkarte bis zur nächsten (vor der ersten Karte: Filmanfang)
+    const kapitel = [];
+    let ab = Math.max(0, sp[0].t0 - 0.6);
+    for (const k of karten) { if (k.t0 > ab + 1) kapitel.push([ab, k.t0]); ab = Math.max(ab, k.t1); }
+    kapitel.push([ab, F.dauer - 0.2]);
+    const { neuesObjekt, w2d } = H();
+    let erster = true;
+    kapitel.forEach(([k0, k1], ki) => {
+      const saetze = sp.filter(s => s.t0 >= k0 - 0.05 && s.t0 < k1);
+      if (!saetze.length || k1 - k0 < 2.5) return;
+      const start = k0 + 0.2, ende = k1 - 0.15;
       const schweben = SCHWEB_HG.includes(hgBei(F, start + 0.5));
       const y = schweben ? -15 : -11;
-      // die freiere der beiden unteren Ecken
-      const links = belegung(F, -42, y, start, ende), rechts = belegung(F, 42, y, start, ende);
-      const x = links <= rechts ? -42 : 42, rand = x < 0 ? -58 : 58;
-      const o = neuesObjekt(F, { typ: 'schleim', name: 'glib_auto' + i, t0: start + 0.2, p: [rand, y], r: 6.5, schweben, auto: true });
-      o.segs.push({ typ: 'zu', t0: start + 0.2, t1: start + 1.1, von: [rand, y], zu: [x, y] });
-      o.segs.push({ typ: 'zu', t0: ende - 0.9, t1: ende, von: [x, y], zu: [rand, y] });
+      // Ecke Satz für Satz wählen; nur wechseln, wenn die andere Ecke deutlich freier ist
+      let seite = belegung(F, -42, y, start, saetze[0].t1) <= belegung(F, 42, y, start, saetze[0].t1) ? -1 : 1;
+      const startSeite = seite, wechsel = [];
+      for (const s of saetze.slice(1)) {
+        const hier = belegung(F, seite * 42, y, s.t0, s.t1), dort = belegung(F, -seite * 42, y, s.t0, s.t1);
+        if (hier > dort + 8) { seite = -seite; wechsel.push([s.t0 - 0.5, seite]); }
+      }
+      let akt = startSeite;
+      const o = neuesObjekt(F, { typ: 'schleim', name: 'glib_erzaehler' + ki, t0: start, p: [akt * 58, y], r: 5.5, schweben, auto: true });
+      o.segs.push({ typ: 'zu', t0: start, t1: start + 0.9, von: [akt * 58, y], zu: [akt * 42, y] });
+      for (const [t, neu] of wechsel) {
+        if (t < start + 1.2 || t > ende - 1.5) continue;
+        o.segs.push({ typ: 'zu', t0: t, t1: t + 0.45, von: [akt * 42, y], zu: [akt * 58, y] });
+        o.segs.push({ typ: 'zu', t0: t + 0.45, t1: t + 0.9, von: [neu * 58, y], zu: [neu * 42, y] });
+        akt = neu;
+      }
+      o.segs.push({ typ: 'zu', t0: ende - 0.8, t1: ende, von: [akt * 42, y], zu: [akt * 58, y] });
       o.t1 = ende + 0.05;
+      if (erster) { // beim ersten Auftritt kurz ein Namensschild
+        w2d(F).texte.push({ t0: start + 1, t1: start + 4, text: BF.MASKOTTCHEN_NAME, an: { obj: o.name } });
+        erster = false;
+      }
     });
   });
 
