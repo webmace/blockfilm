@@ -277,7 +277,8 @@ function stapelWeiter() {
   if (j.stimme) a.push('--stimme', j.stimme);
   if (j.tempo) a.push('--sprechtempo', j.tempo);
   if (j.alter) a.push('--alter', j.alter);
-  const proc = spawn(process.execPath, a, { stdio: 'ignore', cwd: HIER });
+  // niedrigste Priorität für CPU und Festplatte, damit die App flüssig bleibt
+  const proc = spawn('nice', ['-n', '19', 'ionice', '-c', '3', process.execPath, ...a], { stdio: 'ignore', cwd: HIER });
   proc.on('exit', code => {
     stapel.fertig.unshift({ name: j.name, ziel: j.ziel, ok: code === 0 });
     stapel.fertig.length = Math.min(stapel.fertig.length, 30);

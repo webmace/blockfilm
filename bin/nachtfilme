@@ -20,7 +20,8 @@ for n in geister himmelblau erdestopp umlaufbahn koerper tagundnacht schwarzeslo
   ok=0
   for versuch in 1 2; do  # bei Abbruch (z. B. nach Ruhezustand) einmal neu versuchen
     rm -f "$AUS/$n.teil.mp4"
-    if nice -n 5 systemd-inhibit --what=sleep:idle --who=Blockfilm --why="Filme werden gespeichert" \
+    # niedrigste Priorität für CPU und Festplatte: die App bleibt flüssig, der Export nimmt nur übrige Rechenzeit
+    if nice -n 19 ionice -c 3 systemd-inhibit --what=sleep:idle --who=Blockfilm --why="Filme werden gespeichert" \
          "$HIER/bin/blockfilm" --render "$f" -o "$AUS/$n.teil.mp4" > "$AUS/.letzter-lauf.txt" 2>&1 \
        && ffprobe -v error "$AUS/$n.teil.mp4" >/dev/null 2>&1; then ok=1; break; fi
     echo "$(date '+%H:%M') $n: Versuch $versuch abgebrochen" >> "$LOG"
