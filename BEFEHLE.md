@@ -190,6 +190,9 @@ Jede Szene beginnt mit einem passenden `hintergrund`. Am Ende eines Kapitels all
 `maskottchen2d glib bei -30 -11 groesse 7` – unser Maskottchen: ein kleiner bunter Schleim. Er wackelt, blinzelt, schaut zum Neuesten im Bild, bewegt den Mund, wenn gesprochen wird, und hüpft bei `bewege2d glib zu …`. Mit `schweben` schwebt er (z. B. im Weltraum oder unter Wasser). Ohne eigenes `maskottchen2d` erzählt Glib den Film: er steht in jedem Kapitel in einer freien unteren Ecke und spricht mit; `maskottchen aus` schaltet das ab.
 Dinge, die es nur einmal gibt (Mond, Sonne, Erde, Mars …), stehen nie doppelt im Bild: kommt ein neuer Mond dazu, verschwindet der alte.
 
+### Tiere
+`tier2d hund bei -20 -11 groesse 7` – gezeichnete Tiere: `hund`, `katze`, `vogel`, `huhn`, `eule`, `frosch`, `schildkroete`, `eidechse`, `hase`, `maus`. Ohne eigenen Namen heißt das Tier wie seine Art (`bewege2d hund zu 10 -11 in 2`). Sie atmen, blinzeln, laufen mit Beinen in ihre Richtung; Frosch und Hase hüpfen, Vögel flattern, der Hund wedelt. Tier-Emojis bei `symbol2d` (🐦 🐸 🐢 …) werden automatisch als gezeichnetes Tier gezeigt. Andere Arten bei `tier2d` sind Dinosaurier (wie `dino2d`).
+
 ### Hintergründe
 `hintergrund erde` (Himmel und Wiese) · `weltraum` · `abend` (Sonnenuntergang) · `wueste` · `schnee` · `zimmer` (drinnen) · `mikro` (unter dem Mikroskop) · `tafel` (Schultafel) · `weiss` · `meer` (unter Wasser) · `urzeit` · `jura` · `kreide` · `staub` · `eiszeit` · `erdschichten`. Mit `hintergrund jura in 2` wird weich übergeblendet.
 

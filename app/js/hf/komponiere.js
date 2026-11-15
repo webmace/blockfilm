@@ -12,7 +12,7 @@
   const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 
   // Skripte, die die Komposition braucht (dieselbe Engine wie die App, nur ohne Oberfläche)
-  HF.SKRIPTE = ['vendor/three.min.js', 'vendor/gsap.min.js', 'js/texturen.js', 'js/skript.js', 'js/physik.js', 'js/ablauf.js', 'js/figuren.js', 'js/wissen.js', 'js/video.js', 'js/welt2d.js', 'js/urzeit.js', 'js/maskottchen.js', 'js/waswaere.js', 'js/autokorrektur.js', 'js/klartext.js', 'js/hf/stile.js', 'js/hf/twemoji-liste.js', 'js/hf/grafik.js', 'js/hf/figuren2d.js', 'js/hf/keime2d.js', 'js/hf/rest2d.js', 'js/hf/komponiere.js'];
+  HF.SKRIPTE = ['vendor/three.min.js', 'vendor/gsap.min.js', 'js/texturen.js', 'js/skript.js', 'js/physik.js', 'js/ablauf.js', 'js/figuren.js', 'js/wissen.js', 'js/video.js', 'js/welt2d.js', 'js/urzeit.js', 'js/maskottchen.js', 'js/tiere.js', 'js/waswaere.js', 'js/autokorrektur.js', 'js/klartext.js', 'js/hf/stile.js', 'js/hf/twemoji-liste.js', 'js/hf/grafik.js', 'js/hf/figuren2d.js', 'js/hf/keime2d.js', 'js/hf/tiere2d.js', 'js/hf/rest2d.js', 'js/hf/komponiere.js'];
 
   HF.passt = function (F) {
     if (!F || !F.w2d || !F.w2d.liste) return false;
@@ -99,6 +99,10 @@
     if (o.typ === 'zahl') {
       const gr = o.r * 1.4 * s0;
       const istText = !o.ohneRand;
+      if (!istText && BF.emojiTier && BF.emojiTier(o.text) && OB_TIER()) { // Tier-Emoji → gezeichnetes Tier
+        const g = HF.objektGrafik.tier(o, stil, e.id, true), px = 2 * g.k * o.r * s0;
+        return `<div class="wip"><svg viewBox="${-g.k} ${-g.k} ${2 * g.k} ${2 * g.k}" width="${r2(px)}" height="${r2(px)}" style="left:${r2(-px / 2)}px;top:${r2(-px / 2)}px">${g.svg}</svg></div>`;
+      }
       const bilder = !istText && HF.emojiDateien(o.text);
       if (bilder) return `<div class="wip"><div class="zahl zsymbol zbild" style="font-size:${r2(gr)}px">${bilder.map(n => `<img src="${basisJetzt}vendor/twemoji/${n}.svg" alt="">`).join('')}</div></div>`;
       const farbe = istText ? (/^#?f{3,6}$/i.test(o.farbe) ? '#ffffff' : HF.stilFarbe(stil, o.farbe)) : null;
@@ -109,6 +113,8 @@
     return `<div class="wip"><svg viewBox="${-g.k} ${-g.k} ${2 * g.k} ${2 * g.k}" width="${r2(px)}" height="${r2(px)}" style="left:${r2(-px / 2)}px;top:${r2(-px / 2)}px">${g.svg}</svg></div>`;
   }
   let basisJetzt = '';
+  const OB_TIER = () => !!(HF.objektGrafik && HF.objektGrafik.tier);
+  const istTier = o => o.typ === 'tier' || (o.typ === 'zahl' && o.ohneRand && BF.emojiTier && !!BF.emojiTier(o.text));
   const worte = (text, versal) => esc(versal ? String(text).toUpperCase() : text).split(/\s+/).map(w => `<span class="wort">${w}</span>`).join(' ');
 
   function textMarkup(e, stil) {
@@ -284,6 +290,8 @@ ${HF.SKRIPTE.map(s => `<script src="${basis}${s}"></script>`).join('\n')}
           arme.forEach((b, i) => tl.fromTo(b, { rotation: i ? -18 : 18, svgOrigin: `${i ? 0.18 : -0.18} -0.66` }, { rotation: i ? 18 : -18, duration: schritt, ease: 'sine.inOut', yoyo: true, repeat: k, immediateRender: false }, g.t0));
           tl.to([...beine, ...arme], { rotation: 0, duration: 0.12, ease: 'power1.out' }, g.t1);
         }
+      } else if (istTier(e.o)) {
+        // Tiere atmen und laufen selbst (HF.bewegung.tier)
       } else if (n > 0 && e.o.typ !== 'wolke') tl.fromTo(wip, { y: 0 }, { y: -B.wippen * groesse, duration: halb, ease: 'sine.inOut', yoyo: true, repeat: n, immediateRender: false }, e.t0 + ein);
       if (e.o.typ === 'stern') q.querySelectorAll('.glimmen').forEach(g => tl.fromTo(g, { scale: 0.92, transformOrigin: '50% 50%' }, { scale: 1.06, duration: 1.4, ease: 'sine.inOut', yoyo: true, repeat: wdh(leben, 1.4), immediateRender: false }, e.t0));
       if (e.o.typ === 'wolke' && e.o.regen) q.querySelectorAll('.tropfen').forEach((tr, i) => tl.fromTo(tr, { y: 0, opacity: 1 }, { y: 0.9, opacity: 0, duration: 0.6, ease: 'none', repeat: wdh(leben, 0.6), immediateRender: false }, e.t0 + (i % 3) * 0.2));
@@ -363,6 +371,7 @@ ${HF.SKRIPTE.map(s => `<script src="${basis}${s}"></script>`).join('\n')}
         const rot = o.kipp ? -I.wertBei(o.kipp, t, 0) : 0;
         p.style.transform = `translate(${r2(X)}px,${r2(Y)}px) rotate(${r2(rot)}deg) scale(${r2(fest ? 1 : K.z)})`;
         if (HF.bewegung && HF.bewegung[o.typ]) HF.bewegung[o.typ](p, o, t, F, q, I);
+        else if (o.typ === 'zahl' && HF.bewegung.tier && istTier(o)) HF.bewegung.tier(p, o, t, F, q, I);
         if (o.typ === 'zahl' && o.ohneRand) {
           const z = p._zahl || (p._zahl = p.querySelector('.zahl'));
           const sp = HF.symbolSpiegeln(F, o, t);

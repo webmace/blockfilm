@@ -14,6 +14,7 @@ Erklärfilm-Generator: Claude schreibt ein Skript in einer deutschen Befehlsspra
   - `grafik.js`: SVG-Hintergründe mit Parallax-Ebenen und SVG-Objekte. `HF.portiert(o)` sagt, welche 2D-Objekte schon als SVG existieren.
   - `rest2d.js`: alle übrigen 2D-Objekte (Akku, Atome, Auge, Bits, Blatt, Geist, Hülle, Kaktus, Kontinente, Luft, Mast, Meteor, Pinguin, Pixel, Pizza, Rakete, Regenbogen, Thermometer, Vulkan, Wand, Zeitleiste). Nur das schwarze Loch (`loch`) zeichnet bewusst weiter der alte Zeichner (Gravitationslinse).
   - `twemoji-liste.js` + `app/vendor/twemoji/`: `symbol2d`-Emojis werden als flache Twemoji-SVGs gezeigt (CC-BY 4.0, siehe `LIZENZ.txt`). Der Export kopiert nur die benutzten Dateien.
+  - `tiere2d.js` (+ Engine `app/js/tiere.js`): gezeichnete Tiere (`tier2d`), ersetzen auch Tier-Emojis; Verhalten in `HF.bewegung.tier`.
   - `keime2d.js`: Virus, Bakterie (mit Teilung), Zelle, Abwehrzelle, Antikörper und der Körper mit Organen (Herz, Blut, Nerven, Lunge, Essen, Winken).
   - `figuren2d.js`: Dinos (Geometrie aus `BF.DINO_ARTEN` in urzeit.js), Meerestiere und Flugsaurier, Geräte mit Bildschirmen, Pflanzen und Bäume. Was von der Lage abhängt (Blickrichtung, Laufen, Brüllen, Bildschirmwechsel), setzt `HF.bewegung[typ](el, o, t, F, pos, I)` bei jedem Seek.
   - `komponiere.js`:
