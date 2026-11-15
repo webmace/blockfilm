@@ -1148,7 +1148,12 @@
         case 'baue': case 'bau': return bauen(w, t);
         case 'figur': case 'tier': case 'person': case 'neu': return figurAnlegen(w, t);
         case 'kamera': case 'cam': return kameraBefehl(w, t);
-        case 'warte': case 'pause': return w.dauer(w.zahl(1));
+        case 'warte': case 'pause': {
+          // kurze Erzählpausen (bis 1,5 s) werden beim Sprechtempo "flott" mitgekürzt; längere sind Absicht
+          const d = w.dauer(w.zahl(1));
+          const T = BF.SPRECHTEMPO && BF.SPRECHTEMPO[BF.sprechTempoWahl];
+          return T && d <= 1.5 ? d * T.warte : d;
+        }
         case 'text': case 'untertitel': case 'titel': case 'ueberschrift': {
           const txt = w.text();
           if (txt === null) throw new Error('Text in Anführungszeichen fehlt');

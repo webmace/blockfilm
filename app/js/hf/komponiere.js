@@ -205,7 +205,7 @@ html,body{margin:0;padding:0;background:#000;overflow:hidden}
     teile.push(clip('blitz', '', 0, P.D, ''));
     if (daten.ton) teile.push(`<audio id="ton" class="clip" data-start="0" data-duration="${D}" data-track-index="${spur++}" data-volume="1" src="${esc(daten.ton)}"></audio>`);
     // Umgebung der App, die die Übersetzung beeinflusst (z. B. die gewählte Stimme bestimmt den Schlüssel der Sprechdauer)
-    const laufDaten = { skript: daten.skript, sprachDauer: daten.sprachDauer || {}, alter: daten.alter || null, breite: W, hoehe: H, vorschau: !!daten.vorschau, stimmeWahl: BF.stimmeWahl || null, standardSkin: BF.standardSkin || null };
+    const laufDaten = { skript: daten.skript, sprachDauer: daten.sprachDauer || {}, alter: daten.alter || null, breite: W, hoehe: H, vorschau: !!daten.vorschau, stimmeWahl: BF.stimmeWahl || null, standardSkin: BF.standardSkin || null, sprechTempoWahl: BF.sprechTempoWahl || 'flott' };
     return `<!doctype html>
 <html lang="de"><head><meta charset="utf-8"><meta name="viewport" content="width=${W}">
 <title>${esc(F.titel || 'Blockfilm')}</title>
@@ -224,6 +224,7 @@ ${HF.SKRIPTE.map(s => `<script src="${basis}${s}"></script>`).join('\n')}
     const W = daten.breite, H = daten.hoehe;
     BF.sprachDauer = daten.sprachDauer || {};
     BF.stimmeWahl = daten.stimmeWahl || null;
+    BF.sprechTempoWahl = daten.sprechTempoWahl || 'flott';
     BF.standardSkin = daten.standardSkin || null;
     if (daten.alter) HF.standardAlter = daten.alter;
     const F = BF.kompiliere(daten.skript);

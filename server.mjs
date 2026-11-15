@@ -157,18 +157,49 @@ function sprechen(text, stimme, tempo) {
     fs.mkdirSync(TTS_CACHE, { recursive: true });
     text = aussprechen(text); // Zahlen, Abkürzungen, eigene Wörter
     const key = crypto.createHash('sha1').update(`${st}|${tempo}|${text}`).digest('hex');
-    const ziel = path.join(TTS_CACHE, key + '.wav');
+    const roh = path.join(TTS_CACHE, key + '.wav');            // so, wie Piper es liefert
+    const ziel = path.join(TTS_CACHE, key + '-knapp.wav');     // Stille am Anfang und Ende abgeschnitten
     if (fs.existsSync(ziel)) return ok(ziel);
+    const kuerzen = () => { try { stilleAbschneiden(roh, ziel); ok(ziel); } catch (e) { ok(roh); } };
+    if (fs.existsSync(roh)) return kuerzen();
     const [datei, sprecher] = st.split('#');
     let sprecherId = null;
     if (sprecher) { try { sprecherId = JSON.parse(fs.readFileSync(path.join(STIMMEN, datei + '.onnx.json'), 'utf8')).speaker_id_map[sprecher]; } catch {} }
-    const tmp = ziel + '.tmp.wav';
+    const tmp = roh + '.tmp.wav';
     const pr = piperProzess(datei, tempo || 1);
-    pr.warte.set(tmp, { ok: () => { try { fs.renameSync(tmp, ziel); ok(ziel); } catch (e) { nein(e); } }, nein });
+    pr.warte.set(tmp, { ok: () => { try { fs.renameSync(tmp, roh); kuerzen(); } catch (e) { nein(e); } }, nein });
     const zeile = { text: text.replace(/\s+/g, ' '), output_file: tmp };
     if (sprecherId !== null && sprecherId !== undefined) zeile.speaker_id = sprecherId;
     pr.proc.stdin.write(JSON.stringify(zeile) + '\n');
   });
+}
+// Piper hängt vor und nach jedem Satz Stille an (zusammen oft 0,3–0,5 s). Die schneiden wir ab,
+// damit die Sätze flüssig aufeinander folgen; die Pause dazwischen regelt dann allein "sprechpause".
+function stilleAbschneiden(von, nach, schwelle = 450, vorne = 0.03, hinten = 0.07) {
+  const b = fs.readFileSync(von);
+  if (b.toString('ascii', 0, 4) !== 'RIFF' || b.toString('ascii', 8, 12) !== 'WAVE') throw new Error('kein WAV');
+  let pos = 12, fmt = null, daten = null;
+  while (pos + 8 <= b.length) {
+    const id = b.toString('ascii', pos, pos + 4), len = b.readUInt32LE(pos + 4);
+    if (id === 'fmt ') fmt = { kanaele: b.readUInt16LE(pos + 10), rate: b.readUInt32LE(pos + 12), bits: b.readUInt16LE(pos + 22) };
+    if (id === 'data') { daten = { start: pos + 8, len: Math.min(len, b.length - pos - 8) }; break; }
+    pos += 8 + len + (len % 2);
+  }
+  if (!fmt || !daten || fmt.bits !== 16) throw new Error('WAV-Format nicht unterstützt');
+  const schritt = 2 * fmt.kanaele, n = Math.floor(daten.len / schritt);
+  const laut = i => { for (let k = 0; k < fmt.kanaele; k++) if (Math.abs(b.readInt16LE(daten.start + i * schritt + k * 2)) > schwelle) return true; return false; };
+  let a = 0; while (a < n && !laut(a)) a++;
+  let e = n - 1; while (e > a && !laut(e)) e--;
+  if (a >= e) { fs.copyFileSync(von, nach); return; }
+  a = Math.max(0, a - Math.round(vorne * fmt.rate)); e = Math.min(n - 1, e + Math.round(hinten * fmt.rate));
+  const pcm = b.subarray(daten.start + a * schritt, daten.start + (e + 1) * schritt);
+  const kopf = Buffer.alloc(44);
+  kopf.write('RIFF', 0); kopf.writeUInt32LE(36 + pcm.length, 4); kopf.write('WAVE', 8); kopf.write('fmt ', 12);
+  kopf.writeUInt32LE(16, 16); kopf.writeUInt16LE(1, 20); kopf.writeUInt16LE(fmt.kanaele, 22); kopf.writeUInt32LE(fmt.rate, 24);
+  kopf.writeUInt32LE(fmt.rate * schritt, 28); kopf.writeUInt16LE(schritt, 32); kopf.writeUInt16LE(16, 34); kopf.write('data', 36); kopf.writeUInt32LE(pcm.length, 40);
+  const tmp = nach + '.tmp';
+  fs.writeFileSync(tmp, Buffer.concat([kopf, pcm]));
+  fs.renameSync(tmp, nach);
 }
 // Mehrere Piper-Prozesse pro Stimme, damit mehrere Sätze gleichzeitig eingelesen werden (4 Kerne → bis zu 3)
 const piperPool = new Map();

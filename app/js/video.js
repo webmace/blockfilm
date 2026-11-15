@@ -8,6 +8,8 @@
   const Z = (BF.zusatz = BF.zusatz || {});
   BF.videoInfo = BF.videoInfo || {};   // Pfad -> { dauer, breite, hoehe, url, ton }
   BF.sprachDauer = BF.sprachDauer || {}; // Schlüssel -> Sekunden
+  BF.SPRECHTEMPO = { ruhig: { stimme: 1, pause: 1, warte: 1 }, flott: { stimme: 1.08, pause: 0.45, warte: 0.6 }, sehrflott: { stimme: 1.15, pause: 0.25, warte: 0.4 } };
+  BF.sprechTempoWahl = BF.sprechTempoWahl || 'flott';
   BF.sprachPuffer = BF.sprachPuffer || {};
   BF.clipPuffer = BF.clipPuffer || {};
 
@@ -125,7 +127,9 @@
   Z.sprecher = Z.erzaehler = Z.erzaehlerin = Z.vorlesen = Z.sprich = function (w, t, h) {
     const F = h.F; bereit(F);
     const stimme = w.optWort(['stimme']) || F.stimme || BF.stimmeWahl || null;
-    const tempo = w.optZahl(['tempo'], F.sprechTempo || 1);
+    // Sprechtempo aus der App (ruhig / flott / sehr flott) wirkt auf Stimme und Pausen, auch bei fertigen Filmen
+    const T = BF.SPRECHTEMPO[BF.sprechTempoWahl] || BF.SPRECHTEMPO.flott;
+    const tempo = Math.round(w.optZahl(['tempo'], F.sprechTempo || 1) * T.stimme * 100) / 100;
     const ohneUT = w.flag(['ohneuntertitel', 'ohnetext']);
     const texte = [];
     for (let s = w.text(); s !== null; s = w.text()) texte.push(s);
@@ -151,7 +155,7 @@
         for (const alt of F.texte) if (alt.ort === 'unten' && alt.t0 < tt && alt.t1 > tt) alt.t1 = tt;
         F.texte.push({ t0: tt, t1: tt + dauer + 0.15, text, ort: 'unten', groesse: 0.95, farbe: '#ffffff', sprecher: true });
       }
-      tt += dauer + (F.sprechPause ?? 0.25);
+      tt += dauer + (F.sprechPause ?? 0.25) * T.pause;
     }
     F.sprechFrei = tt;
     return tt - t;

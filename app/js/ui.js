@@ -562,6 +562,15 @@
       clearTimeout(tm); tm = setTimeout(tonNeu, 400);
     });
   }
+  // Sprechtempo (Stimme schneller, Pausen kürzer)
+  try { const v = localStorage.getItem('bf_sprechtempo'); if (v && BF.SPRECHTEMPO[v]) BF.sprechTempoWahl = v; } catch {}
+  $('sprechTempo').value = BF.sprechTempoWahl;
+  $('sprechTempo').addEventListener('change', () => {
+    BF.sprechTempoWahl = $('sprechTempo').value;
+    try { localStorage.setItem('bf_sprechtempo', BF.sprechTempoWahl); } catch {}
+    status('Sprechtempo geändert – der Sprecher wird neu eingelesen …');
+    if (S.modus === 'text' && !S.ki && kt.value.trim()) klartextUebersetzen(); else kompilieren();
+  });
   // Stimmen-Auswahl
   try { BF.stimmeWahl = localStorage.getItem('bf_stimme') || null; } catch {}
   function stimmenMenue() {
