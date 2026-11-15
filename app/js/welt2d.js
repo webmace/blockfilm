@@ -901,6 +901,7 @@
         ctx.lineJoin = 'round'; ctx.strokeStyle = 'rgba(0,0,0,0.75)'; ctx.lineWidth = Math.max(3, g * 0.12);
         const hupf = clamp((t - o.t0) / 0.4, 0, 1);
         ctx.translate(sx, sy); ctx.scale(0.7 + 0.3 * hupf, 0.7 + 0.3 * hupf);
+        if (o.ohneRand && BF.hf && BF.hf.symbolSpiegeln) ctx.scale(BF.hf.symbolSpiegeln(F, o, t), 1); // Autos nicht rückwärts fahren lassen
         if (!o.ohneRand) ctx.strokeText(o.text, 0, 0);
         ctx.fillStyle = o.farbe; ctx.fillText(o.text, 0, 0);
       } else if (o.typ === 'form') {

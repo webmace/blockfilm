@@ -256,6 +256,30 @@
     };
   };
 
+  // ---------- Blickrichtung von Bildzeichen ----------
+  // Twemoji (und die meisten Emoji-Schriften) zeigen Fahrzeuge und Tiere von der Seite, fast alle nach links.
+  // Bewegt sich so ein Zeichen nach rechts, wird es gespiegelt, damit das Auto nicht rückwärts fährt.
+  const NACH_LINKS = new Set([...'🚗🚕🚙🚌🚎🚓🚑🚒🚐🛻🚚🚛🚜🏎🚲🛴🛵🏍🛺🚂🚃🚄🚅🚈🚝🚞🚋🚁🛶🚤🛥🛳⛴🚢🐕🐩🦮🐕‍🦺🐈🐈‍⬛🐄🐂🐃🐖🐗🐑🐏🐐🐇🐢🐌🐟🐠🐡🐬🐳🐋🦈🐊🦖🦕🐘🦣🦏🦛🦒🦓🐒🦍🦧🦆🐦🦅🐛🐜🚶🏃🐁🐀🐿🦫🐅🐆🐫🐪🦘🦙🐓🐤🐥🦜🦢🦩🦚🦤🐧🦭🦗🐉🦄🐾🦼🦽🛷']);
+  const NACH_RECHTS = new Set([...'✈🛩🚀🐎🏇']);
+  HF.symbolBlick = function (text) {
+    const g = [...String(text || '').replace(/️/g, '')];
+    if (!g.length) return 0;
+    const z = g[0];
+    return NACH_LINKS.has(z) ? -1 : NACH_RECHTS.has(z) ? 1 : 0; // -1 = schaut nach links, 1 = nach rechts, 0 = egal
+  };
+  // Spiegelung (1 oder -1) eines Bildzeichens zur Zeit t: es schaut in die Richtung, in die es sich zuletzt bewegt hat
+  HF.symbolSpiegeln = function (F, o, t) {
+    const blick = o._blick ?? (o._blick = HF.symbolBlick(o.text));
+    if (!blick) return 1;
+    let richtung = 0;
+    for (const sg of o.segs || []) {
+      if (sg.t0 > t) break;
+      if (sg.typ === 'zu' && Math.abs(sg.zu[0] - sg.von[0]) > 0.01) richtung = Math.sign(sg.zu[0] - sg.von[0]);
+      if (sg.typ === 'kreis' && BF.w2dIntern) { const a = BF.w2dIntern.pos(F, o, t), b = BF.w2dIntern.pos(F, o, Math.max(o.t0, t - 0.05)); if (Math.abs(a[0] - b[0]) > 1e-4) richtung = Math.sign(a[0] - b[0]); }
+    }
+    return richtung && richtung !== blick ? -1 : 1;
+  };
+
   HF.objektGrafik = OB;
   // Welche Objekte HyperFrames selbst zeichnet (der Rest kommt vorerst aus dem alten Zeichner)
   HF.portiert = o => {

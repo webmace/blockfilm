@@ -517,6 +517,7 @@
       if (!F || !$('neuerStil').checked || !BF.hf.passt(F)) { hfRahmen.hidden = true; hfBereit = false; S.zeichnen = true; return; }
       const B = 1280, H = Math.round(B * F.hoehe / F.breite / 2) * 2;
       hfGroesse = [B, H];
+      hfBereit = false; // die neue Seite lädt erst noch
       hfRahmen.onload = () => { hfBereit = true; hfLage(); S.zeichnen = true; };
       hfRahmen.srcdoc = BF.hf.komponiere(F, { skript: S.quelle, sprachDauer: S.sprachStand, alter: BF.hf.standardAlter, breite: B, hoehe: H, vorschau: true, ton: null });
       hfRahmen.hidden = false;
@@ -766,7 +767,8 @@
     videoAbgleich();
     if (!S.zeichnen) return;
     S.zeichnen = false;
-    if (hfBereit && !hfRahmen.hidden) { try { hfRahmen.contentWindow.__bfZeige(S.t); } catch (e) { console.error(e); } }
+    const hfZeige = hfBereit && !hfRahmen.hidden && hfRahmen.contentWindow && hfRahmen.contentWindow.__bfZeige;
+    if (hfZeige) { try { hfZeige(S.t); } catch (e) { console.error(e); } }
     else try { szene.zeichne(S.t, anzeigeB, anzeigeH); } catch (e) { console.error(e); status('Fehler beim Zeichnen: ' + e.message); }
     regler.value = Math.round((S.t / S.F.dauer) * 1000);
     $('zeitText').textContent = fmt(S.t) + ' / ' + fmt(S.F.dauer);
@@ -993,6 +995,78 @@
   $('flListe').addEventListener('wheel', e => { if (Math.abs(e.deltaY) > Math.abs(e.deltaX)) { $('flListe').scrollLeft += e.deltaY; e.preventDefault(); } }, { passive: false });
   setTimeout(filmleisteLaden, 800);
 
+  // ---------- Film-Übersicht: alle Filme ansehen, fertige Videos abspielen, im Hintergrund exportieren ----------
+  let galDaten = { ki: [], eigene: [], videos: [], stapel: { warten: [], laeuft: null, fertig: [] } };
+  const themaName = (k, alter) => `${BF.THEMEN[k].name} (${alter})`;
+  function themaText(k, alter) {
+    const th = BF.THEMEN[k];
+    const r = BF.klartext(th.name, { standardVideo: standardVideo(), alter });
+    return '#| ' + th.name + '\n' + r.skript + '\nzielgruppe ' + alter + '\n';
+  }
+  async function galerieLaden() {
+    try { const f = await api('/api/filmliste'); galDaten.ki = f.ki || []; galDaten.eigene = f.eigene || []; } catch {}
+    try { galDaten.videos = (await api('/api/exporte')).fertig || []; } catch {}
+    try { galDaten.stapel = await api('/api/stapel'); } catch {}
+    galerieZeigen();
+  }
+  function galerieZeigen() {
+    const st = galDaten.stapel, alter = $('kiAlter').value;
+    const zustand = (datei, name) => {
+      if (st.laeuft && (st.laeuft.datei === datei || st.laeuft.name === name)) return '<span class="gal-info">⏳ wird gerade exportiert</span>';
+      const i = st.warten.findIndex(w => w.datei === datei || w.name === name);
+      return i >= 0 ? `<span class="gal-info">🕒 wartet (Platz ${i + 1})</span>` : '';
+    };
+    const karte = (titel, info, knoepfe, z) => `<div class="gal-film${z.includes('⏳') ? ' laeuft' : ''}"><div class="gal-name">${titel}</div><div class="gal-info">${info}</div>${z}<div class="gal-knoepfe">${knoepfe}</div></div>`;
+    const leer = t => `<div class="gal-leer">${t}</div>`;
+    $('galVideos').innerHTML = galDaten.videos.length ? galDaten.videos.map(v => karte(esc(v.name), `${zeitText(v.zeit)} Uhr · ${(v.groesse / 1048576).toFixed(0)} MB`,
+      v.kaputt ? '<span class="gal-info">⚠ unvollständig</span>' : `<button data-video="${esc(v.datei)}" data-name="${esc(v.name)}">▶ Abspielen</button><button data-ordner="${esc(v.datei)}" title="Im Ordner zeigen">📂</button>`, '')).join('') : leer('Noch keine fertigen Videos.');
+    $('galKI').innerHTML = galDaten.ki.length ? galDaten.ki.map(f => karte('🤖 ' + esc(f.thema), `${f.alter ? esc(f.alter) + ' Jahre · ' : ''}${zeitText(f.zeit)} Uhr`,
+      `<button data-ansehen="${esc(f.pfad)}">▶ Ansehen</button><button data-export="${esc(f.pfad)}" data-name="${esc(f.thema)}">💾 Exportieren</button>`, zustand(f.pfad, f.thema))).join('') : leer('Noch keine KI-Filme. Schreib oben ein Thema und drück „🤖 KI-Film“.');
+    $('galThemen').innerHTML = Object.entries(BF.THEMEN || {}).map(([k, th]) => karte(`${FILM_ICON[k] || '🎬'} ${esc(th.name)}`, `für ${esc(BF.ALTER_NAME[alter] || alter)}`,
+      `<button data-thema="${k}">▶ Ansehen</button><button data-themaexport="${k}">💾 Exportieren</button>`, zustand(null, themaName(k, alter)))).join('');
+    $('galEigene').innerHTML = galDaten.eigene.length ? galDaten.eigene.map(f => karte('✍ ' + esc(f.name.replace(/\.(txt|blockfilm|bf)$/i, '')), `${zeitText(f.zeit)} Uhr`,
+      `<button data-ansehen="${esc(f.pfad)}">▶ Ansehen</button><button data-export="${esc(f.pfad)}" data-name="${esc(f.name.replace(/\.(txt|blockfilm|bf)$/i, ''))}">💾 Exportieren</button>`, zustand(f.pfad, f.name))).join('') : leer('Noch keine eigenen Skripte gespeichert.');
+    const teile = [];
+    if (st.laeuft) teile.push(`⏳ Exportiert gerade: <b>${esc(st.laeuft.name)}</b>`);
+    if (st.warten.length) teile.push(`🕒 ${st.warten.length} ${st.warten.length === 1 ? 'Film wartet' : 'Filme warten'} <button class="klein-knopf" data-leeren="1">Warteschlange leeren</button>`);
+    if (st.laeuft || st.warten.length) teile.push('<span class="gal-info">Fortschritt unter „📋 Exporte“. Du kannst währenddessen weiterarbeiten.</span>');
+    $('galStapel').innerHTML = teile.join(' · ');
+  }
+  async function hintergrundExport(filme) {
+    const r = await post('/api/stapel', { filme, aufl: $('gal-aufl').value, stimme: BF.stimmeWahl || null, tempo: BF.sprechTempoWahl || null, alter: $('kiAlter').value });
+    galDaten.stapel = r; galerieZeigen(); exporteAktualisieren();
+    status(r.neu ? `💾 ${r.neu} ${r.neu === 1 ? 'Film wird' : 'Filme werden'} im Hintergrund exportiert (nacheinander).` : 'Diese Filme sind schon in der Warteschlange.');
+  }
+  async function filmAnsehen(lade) {
+    if (S.export) return status('Während ein Video gespeichert wird, kann kein anderer Film geladen werden.');
+    if (S.geaendert && S.modus === 'skript' && !confirm('Dein Skript ist noch nicht gespeichert. Trotzdem einen anderen Film laden?')) return;
+    $('galerie').hidden = true;
+    await lade();
+    filmleisteZeigen();
+    S.t = 0;
+    spielen(true);
+  }
+  $('b-galerie').onclick = () => { $('galerie').hidden = false; galerieLaden(); };
+  $('gal-aufl').addEventListener('change', () => { try { localStorage.setItem('bf_galAufl', $('gal-aufl').value); } catch {} });
+  try { const v = localStorage.getItem('bf_galAufl'); if (v) $('gal-aufl').value = v; } catch {}
+  $('galerie').addEventListener('click', async e => {
+    const b = e.target.closest('button'); if (!b) return;
+    const d = b.dataset, alter = $('kiAlter').value;
+    if (d.video) { $('spielerTitel').textContent = '▶ ' + d.name; $('spielerVideo').src = '/api/roh?p=' + encodeURIComponent(d.video); $('spielerOrdner').onclick = () => post('/api/oeffnen', { pfad: d.video.replace(/\/[^/]*$/, '') }); $('spieler').hidden = false; $('spielerVideo').play().catch(() => {}); }
+    else if (d.ordner) post('/api/oeffnen', { pfad: d.ordner.replace(/\/[^/]*$/, '') });
+    else if (d.ansehen) filmAnsehen(async () => { await oeffnePfad(d.ansehen); });
+    else if (d.thema) filmAnsehen(async () => { const th = BF.THEMEN[d.thema]; S.ki = null; S.datei = null; kiAnsicht(); modus('text'); kt.value = th.name; klartextUebersetzen(); });
+    else if (d.export) hintergrundExport([{ pfad: d.export, name: d.name }]);
+    else if (d.themaexport) hintergrundExport([{ text: themaText(d.themaexport, alter), name: themaName(d.themaexport, alter) }]);
+    else if (d.alle === 'ki') hintergrundExport(galDaten.ki.map(f => ({ pfad: f.pfad, name: f.thema })));
+    else if (d.alle === 'eigene') hintergrundExport(galDaten.eigene.map(f => ({ pfad: f.pfad, name: f.name.replace(/\.(txt|blockfilm|bf)$/i, '') })));
+    else if (d.alle === 'themen') hintergrundExport(Object.keys(BF.THEMEN).map(k => ({ text: themaText(k, alter), name: themaName(k, alter) })));
+    else if (d.leeren) { if (confirm('Alle wartenden Exporte entfernen? Der laufende Export läuft weiter.')) { galDaten.stapel = await post('/api/stapel/leeren', {}); galerieZeigen(); } }
+  });
+  // Video anhalten, wenn der Spieler geschlossen wird
+  $('spieler').addEventListener('click', e => { if (e.target.id === 'spieler' || e.target.closest('[data-zu]')) { $('spielerVideo').pause(); } });
+  setInterval(async () => { if ($('galerie').hidden) return; try { galDaten.stapel = await api('/api/stapel'); galerieZeigen(); } catch {} }, 3000);
+
   // ---------- Übersicht aller Exporte (auch Hintergrund und Nacht-Export) ----------
   const WTAGE = ['So', 'Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa'];
   const zeitText = ms => { const d = new Date(ms); return `${WTAGE[d.getDay()]} ${String(d.getDate()).padStart(2, '0')}.${String(d.getMonth() + 1).padStart(2, '0')}. ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`; };
@@ -1185,6 +1259,11 @@ alex sagt "Wow!!"
     await materialLaden();
     try { S.stimmen = await api('/api/stimmen'); } catch { S.stimmen = { piper: false, stimmen: [] }; }
     stimmenMenue();
+    if (info.render) { // Hintergrund-Export: Einstellungen aus der App übernehmen
+      if (info.renderStimme) BF.stimmeWahl = info.renderStimme;
+      if (info.renderTempo && BF.SPRECHTEMPO[info.renderTempo]) BF.sprechTempoWahl = info.renderTempo;
+      if (info.renderAlter && BF.hf.STILE[info.renderAlter]) $('kiAlter').value = info.renderAlter;
+    }
     if (info.videos) $('ex-ordner').textContent = info.videos;
     const q = new URLSearchParams(location.search);
     if (info.text !== null && info.text !== undefined && info.datei) setzeText(info.text, info.datei, 0);

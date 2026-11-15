@@ -359,6 +359,11 @@ ${HF.SKRIPTE.map(s => `<script src="${basis}${s}"></script>`).join('\n')}
         const rot = o.kipp ? -I.wertBei(o.kipp, t, 0) : 0;
         p.style.transform = `translate(${r2(X)}px,${r2(Y)}px) rotate(${r2(rot)}deg) scale(${r2(K.z)})`;
         if (HF.bewegung && HF.bewegung[o.typ]) HF.bewegung[o.typ](p, o, t, F, q, I);
+        if (o.typ === 'zahl' && o.ohneRand) {
+          const z = p._zahl || (p._zahl = p.querySelector('.zahl'));
+          const sp = HF.symbolSpiegeln(F, o, t);
+          if (z && z._sp !== sp) { z._sp = sp; z.style.transform = sp < 0 ? 'translate(-50%,-50%) scaleX(-1)' : ''; }
+        }
         if (sch) {
           let lx = -0.6, ly = -0.5;
           if (stern && stern !== o) { const sp = I.pos(F, stern, t); lx = sp[0] - q[0]; ly = -(sp[1] - q[1]); }

@@ -17,6 +17,7 @@
   <span class="platz"></span>
   <span id="info" class="info"></span>
   <button id="b-hilfe" title="Alle Befehle (F1)">Befehle</button>
+  <button id="b-galerie" title="Alle Filme auf einen Blick: ansehen, fertige Videos abspielen und exportieren">🎬 Alle Filme</button>
   <button id="b-exporte" title="Alle Exporte ansehen: was gerade gespeichert wird, der Nacht-Export und fertige Videos">📋 Exporte <span id="exporteZahl" class="abzeichen" hidden></span></button>
   <button id="b-video" class="haupt" title="Den Film, der rechts in der Vorschau läuft, als MP4-Datei speichern (in Videos/Blockfilm)">💾 Als Video speichern</button>
 </header>
@@ -99,6 +100,24 @@
   </div>
 </div>
 
+<div class="schicht" id="galerie" hidden>
+  <div class="karte breit galerie">
+    <div class="kopf"><h2>🎬 Alle Filme</h2>
+      <label class="schalter" title="Auflösung für Exporte aus dieser Übersicht">Exportieren in <select id="gal-aufl"><option value="720p">HD (720p, schnell)</option><option value="1080p" selected>Full HD (1080p)</option><option value="4k">4K (langsam)</option></select></label>
+      <button class="zu" data-zu="galerie">✕</button></div>
+    <div id="galStapel" class="gal-stapel"></div>
+    <h3 class="ex-titel">✅ Fertige Videos</h3><div id="galVideos" class="gal-raster"></div>
+    <h3 class="ex-titel">🤖 KI-Filme <button class="klein-knopf" data-alle="ki" title="Alle KI-Filme nacheinander im Hintergrund exportieren">💾 Alle exportieren</button></h3><div id="galKI" class="gal-raster"></div>
+    <h3 class="ex-titel">🎞️ Fertige Themen-Filme <button class="klein-knopf" data-alle="themen" title="Alle Themen-Filme (im gewählten Alter) nacheinander im Hintergrund exportieren">💾 Alle exportieren</button></h3><div id="galThemen" class="gal-raster"></div>
+    <h3 class="ex-titel">✍ Eigene Skripte <button class="klein-knopf" data-alle="eigene" title="Alle eigenen Skripte nacheinander im Hintergrund exportieren">💾 Alle exportieren</button></h3><div id="galEigene" class="gal-raster"></div>
+  </div>
+</div>
+<div class="schicht" id="spieler" hidden>
+  <div class="karte breit spieler-karte">
+    <div class="kopf"><h2 id="spielerTitel">▶ Video</h2><button id="spielerOrdner">📂 Ordner</button><button class="zu" data-zu="spieler" id="spielerZu">✕</button></div>
+    <video id="spielerVideo" controls preload="metadata"></video>
+  </div>
+</div>
 <div class="schicht" id="exporte" hidden>
   <div class="karte breit">
     <div class="kopf"><h2>📋 Exporte</h2><button id="ex-ordner2">📂 Videos-Ordner</button><button class="zu" data-zu="exporte">✕</button></div>

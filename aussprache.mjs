@@ -54,6 +54,12 @@ function zahlText(roh) {
 }
 
 // ---------- Wörter, die die Stimme von sich aus falsch betont (geprüft mit der Lautschrift von Piper) ----------
+// Diese Regeln laufen vor den eigenen Wörtern: "weg" (= fort) kurz wie "weck", am Satzanfang ("Weg ist er!")
+// und in Verben ("weggehen", "wegnehmen"); "der Weg" und "wegen" bleiben, wie sie sind.
+const VORHER = [
+  [/(^|[.!?:;]\s+|["„»(]\s*)Weg(?=\s+(?:ist|sind|war|waren|damit|da|hier|mit|und|vom|von|weg)\b|\s*[!,.?]|$)/g, (m, vor) => vor + 'Weck'],
+  [/\bweg(?!en\b|e\b|es\b)(?=[bdglmnrsw][a-zäöüß])/g, 'weck-'],
+];
 const WOERTER = [
   [/\b([Oo])range(n|ne|nen|ner|nes|ns|s)?\b/g, (m, o, e) => (e ? 'O-rangsche' + { n: 'n', ne: 'ne', nen: 'nen', ner: 'ner', nes: 'nes', ns: 'ns', s: 's' }[e] : 'O-rangsch')],
   [/\b([Oo])rangen(\w+)/g, (m, o, rest) => 'O-rangschen' + rest],
@@ -113,10 +119,14 @@ function escapeRe(s) { return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'); }
 
 export function aussprechen(text) {
   let s = String(text);
-  // 1. eigene Wörter zuerst (ganze Wörter, Groß/klein egal)
+  // 1. feste Vorab-Regeln, dann eigene Wörter (ganze Wörter)
+  for (const [re, ers] of VORHER) s = s.replace(re, ers);
   const eigene = eigeneLesen();
   for (const [wort, so] of Object.entries(eigene).sort((a, b) => b[0].length - a[0].length)) {
-    s = s.replace(new RegExp('(^|[^\\p{L}])' + escapeRe(wort) + '(?=$|[^\\p{L}])', 'giu'), (m, vor) => vor + so);
+    // Großschreibung am Wortanfang zählt ("Weg" ≠ "weg"); ein kleingeschriebener Eintrag gilt auch am Satzanfang
+    const erst = wort[0], rest = escapeRe(wort.slice(1));
+    const anfang = erst === erst.toLowerCase() ? `[${escapeRe(erst)}${escapeRe(erst.toUpperCase())}]` : escapeRe(erst);
+    s = s.replace(new RegExp('(^|[^\\p{L}])' + anfang + rest + '(?=$|[^\\p{L}])', 'gu'), (m, vor) => vor + (m.slice(vor.length)[0] !== erst && erst === erst.toLowerCase() ? so[0].toUpperCase() + so.slice(1) : so));
   }
   // 2. Wörter mit falscher Betonung, dann Abkürzungen und Zeichen
   for (const [re, ers] of WOERTER) s = s.replace(re, ers);

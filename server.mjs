@@ -25,11 +25,14 @@ fs.mkdirSync(VIDEOS, { recursive: true });
 const args = process.argv.slice(2);
 const renderModus = args.includes('--render');
 const nurServer = args.includes('--server');
-let ausDatei = null, skriptDatei = null, extraAufl = null;
+let ausDatei = null, skriptDatei = null, extraAufl = null, renderStimme = null, renderTempo = null, renderAlter = null;
 for (let i = 0; i < args.length; i++) {
   const a = args[i];
   if (a === '--render' || a === '--server') continue;
   if (a === '-o' || a === '--aus') { ausDatei = path.resolve(args[++i]); continue; }
+  if (a === '--stimme') { renderStimme = args[++i]; continue; }
+  if (a === '--sprechtempo') { renderTempo = args[++i]; continue; }
+  if (a === '--alter') { renderAlter = args[++i]; continue; }
   if (a === '--4k') { extraAufl = '4k'; continue; }
   if (a === '--1080p') { extraAufl = '1080p'; continue; }
   if (a === '--720p') { extraAufl = '720p'; continue; }
@@ -243,6 +246,49 @@ function piperProzess(datei, tempo) {
 process.on('exit', () => { for (const l of piperPool.values()) for (const pr of l) try { pr.proc.kill(); } catch {} });
 let tonDatei = null;
 
+// ---------- Hintergrund-Exporte nacheinander (Film-Übersicht) ----------
+// Jeder Film wird mit "server.mjs --render" in einem eigenen Prozess gebaut; so erscheint er auch in der Export-Übersicht.
+const stapel = { warten: [], laeuft: null, fertig: [] };
+const STAPEL_ORDNER = path.join(CACHE, 'stapel');
+const sicherName = n => (String(n || 'film').replace(/[^\wäöüÄÖÜß\- ]+/g, '').trim().replace(/\s+/g, '_') || 'film').slice(0, 80);
+function stapelHinzu(o) {
+  const aufl = ['720p', '1080p', '4k'].includes(o.aufl) ? o.aufl : '1080p';
+  let n = 0;
+  for (const f of (o.filme || []).slice(0, 100)) {
+    let datei = f.pfad ? path.resolve(String(f.pfad)) : null;
+    if (!datei && f.text) {
+      fs.mkdirSync(STAPEL_ORDNER, { recursive: true });
+      datei = path.join(STAPEL_ORDNER, sicherName(f.name) + '.txt');
+      fs.writeFileSync(datei, String(f.text));
+    }
+    if (!datei || !fs.existsSync(datei)) continue;
+    if (stapel.warten.some(w => w.datei === datei) || (stapel.laeuft && stapel.laeuft.datei === datei)) continue;
+    const stempel = new Date().toISOString().slice(0, 19).replace(/[:T]/g, '-');
+    stapel.warten.push({ datei, name: String(f.name || path.basename(datei, '.txt')), ziel: path.join(VIDEOS, `${sicherName(f.name)}_${stempel}.mp4`), aufl, stimme: o.stimme || null, tempo: o.tempo || null, alter: o.alter || null });
+    n++;
+  }
+  stapelWeiter();
+  return n;
+}
+function stapelWeiter() {
+  if (stapel.laeuft || !stapel.warten.length) return;
+  const j = stapel.laeuft = stapel.warten.shift();
+  const a = [path.join(HIER, 'server.mjs'), '--render', j.datei, '-o', j.ziel, '--' + j.aufl];
+  if (j.stimme) a.push('--stimme', j.stimme);
+  if (j.tempo) a.push('--sprechtempo', j.tempo);
+  if (j.alter) a.push('--alter', j.alter);
+  const proc = spawn(process.execPath, a, { stdio: 'ignore', cwd: HIER });
+  proc.on('exit', code => {
+    stapel.fertig.unshift({ name: j.name, ziel: j.ziel, ok: code === 0 });
+    stapel.fertig.length = Math.min(stapel.fertig.length, 30);
+    stapel.laeuft = null;
+    stapelWeiter();
+  });
+}
+function stapelStatus() {
+  return { laeuft: stapel.laeuft && { name: stapel.laeuft.name, datei: stapel.laeuft.datei }, warten: stapel.warten.map(w => ({ name: w.name, datei: w.datei })), fertig: stapel.fertig.slice(0, 10) };
+}
+
 // ---------- Regie-Prüfung: Standbilder der Komposition mit Chromium (Puppeteer) ----------
 const regieSeiten = new Map();
 async function regieBilder(html, momente) {
@@ -351,7 +397,7 @@ async function anfrage(req, res) {
       let text = null;
       if (skriptDatei && fs.existsSync(skriptDatei)) text = fs.readFileSync(skriptDatei, 'utf8');
       let einst = {}; try { einst = JSON.parse(fs.readFileSync(path.join(HOME, 'Blockfilm', 'einstellungen.json'), 'utf8')); } catch {}
-      return json(res, { einstellungen: einst, datei: skriptDatei, text, render: renderModus, aus: ausDatei, aufl: extraAufl, skripte: SKRIPTE, videos: VIDEOS, material: MATERIAL });
+      return json(res, { einstellungen: einst, datei: skriptDatei, text, render: renderModus, aus: ausDatei, aufl: extraAufl, renderStimme, renderTempo, renderAlter, skripte: SKRIPTE, videos: VIDEOS, material: MATERIAL });
     }
     if (p === '/api/aussprache' && req.method === 'GET') return json(res, { liste: eigeneLesen() });
     if (p === '/api/aussprache' && req.method === 'POST') {
@@ -482,6 +528,14 @@ async function anfrage(req, res) {
       return res.end(daten);
     }
     if (p === '/api/exporte' && req.method === 'GET') return json(res, await exporteLesen());
+    // Warteschlange für Hintergrund-Exporte aus der Film-Übersicht
+    if (p === '/api/stapel' && req.method === 'GET') return json(res, stapelStatus());
+    if (p === '/api/stapel' && req.method === 'POST') {
+      const o = JSON.parse((await koerper(req)).toString('utf8'));
+      const n = stapelHinzu(o);
+      return json(res, { ok: true, neu: n, ...stapelStatus() });
+    }
+    if (p === '/api/stapel/leeren' && req.method === 'POST') { stapel.warten.length = 0; return json(res, { ok: true, ...stapelStatus() }); }
     if (p === '/api/exporte/stopp' && req.method === 'POST') {
       const o = JSON.parse((await koerper(req)).toString('utf8'));
       if (o.nacht) { // ganzen Nacht-Export abbrechen (der laufende Film wird mit gestoppt)

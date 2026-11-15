@@ -156,3 +156,17 @@ h3 { font-size: 13px; color: var(--leise); margin: 14px 0 6px; text-transform: u
 #flListe::-webkit-scrollbar { height: 5px; }
 #flListe::-webkit-scrollbar-track { background: transparent; }
 #flListe::-webkit-scrollbar-thumb { background: #3a3f48; border-radius: 3px; }
+
+/* Film-Übersicht */
+.galerie .kopf { gap: 10px; }
+.gal-raster { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 10px; }
+.gal-film { background: var(--panel2); border: 1px solid var(--rand); border-radius: 10px; padding: 10px 12px; display: flex; flex-direction: column; gap: 6px; }
+.gal-film .gal-name { font-weight: 600; line-height: 1.25; }
+.gal-film .gal-info { font-size: 12px; opacity: .7; }
+.gal-film .gal-knoepfe { display: flex; gap: 6px; flex-wrap: wrap; margin-top: auto; }
+.gal-film.laeuft { border-color: #f2c230; }
+.gal-leer { opacity: .7; font-size: 14px; }
+.gal-stapel { font-size: 14px; margin: 4px 0 2px; }
+.gal-stapel:empty { display: none; }
+.klein-knopf { font-size: 12px; padding: 2px 8px; margin-left: 8px; vertical-align: middle; }
+.spieler-karte video { width: 100%; max-height: 70vh; background: #000; border-radius: 8px; }
