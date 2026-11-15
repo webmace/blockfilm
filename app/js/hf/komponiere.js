@@ -12,7 +12,7 @@
   const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 
   // Skripte, die die Komposition braucht (dieselbe Engine wie die App, nur ohne Oberfläche)
-  HF.SKRIPTE = ['vendor/three.min.js', 'vendor/gsap.min.js', 'js/texturen.js', 'js/skript.js', 'js/physik.js', 'js/ablauf.js', 'js/figuren.js', 'js/wissen.js', 'js/video.js', 'js/welt2d.js', 'js/urzeit.js', 'js/waswaere.js', 'js/autokorrektur.js', 'js/klartext.js', 'js/hf/stile.js', 'js/hf/twemoji-liste.js', 'js/hf/grafik.js', 'js/hf/figuren2d.js', 'js/hf/keime2d.js', 'js/hf/rest2d.js', 'js/hf/komponiere.js'];
+  HF.SKRIPTE = ['vendor/three.min.js', 'vendor/gsap.min.js', 'js/texturen.js', 'js/skript.js', 'js/physik.js', 'js/ablauf.js', 'js/figuren.js', 'js/wissen.js', 'js/video.js', 'js/welt2d.js', 'js/urzeit.js', 'js/maskottchen.js', 'js/waswaere.js', 'js/autokorrektur.js', 'js/klartext.js', 'js/hf/stile.js', 'js/hf/twemoji-liste.js', 'js/hf/grafik.js', 'js/hf/figuren2d.js', 'js/hf/keime2d.js', 'js/hf/rest2d.js', 'js/hf/komponiere.js'];
 
   HF.passt = function (F) {
     if (!F || !F.w2d || !F.w2d.liste) return false;
@@ -267,6 +267,8 @@ ${HF.SKRIPTE.map(s => `<script src="${basis}${s}"></script>`).join('\n')}
         // Pflanzen wiegen sich im Wind (um den Fußpunkt)
         const schw = 1.6 + ((e.t0 * 3.1) % 0.8);
         tl.fromTo(wip, { rotation: -1.6 }, { rotation: 1.6, duration: schw, ease: 'sine.inOut', yoyo: true, repeat: wdh(leben, schw), immediateRender: false, transformOrigin: '0px 0px' }, e.t0);
+      } else if (e.o.typ === 'schleim') {
+        // Glibbi bewegt sich selbst (HF.bewegung.schleim)
       } else if (e.o.typ === 'koerper') {
         if (n > 0) tl.fromTo(wip, { scaleY: 1, transformOrigin: '0px 0px' }, { scaleY: 1.012, duration: halb * 1.6, ease: 'sine.inOut', yoyo: true, repeat: wdh(leben - ein, halb * 1.6), immediateRender: false }, e.t0 + ein);
       } else if (e.o.typ === 'dino' && !['plesiosaurus', 'ichthyosaurus', 'mosasaurus', 'flugsaurier', 'trilobit', 'fisch', 'qualle'].includes(e.o.art)) {
@@ -336,7 +338,7 @@ ${HF.SKRIPTE.map(s => `<script src="${basis}${s}"></script>`).join('\n')}
     const leinwand = $('leinwand');
     const ctx = leinwand.getContext('2d');
     const ebenen = P.hg.map(b => ({ b, l: [...$(b.id).querySelectorAll('.ebene')].map(el => ({ el, par: +el.dataset.par })) }));
-    const objEl = P.objekte.map(e => ({ e, p: $(e.id + 'p'), sch: $(e.id + 'p').querySelector('.schatten') }));
+    const objEl = P.objekte.map(e => ({ e, p: $(e.id + 'p'), sch: e.o.typ === 'planet' ? $(e.id + 'p').querySelector('.schatten') : null }));
     const fakeSzene = { F, ctx, kamera: typeof THREE !== 'undefined' ? new THREE.PerspectiveCamera() : null, ueberLassen: u => P.ueberSet.has(u) };
     const schildEl = P.schilder.map(e => ({ e, l: $(e.id + 'l'), c: $(e.id + 'c'), b: $(e.id + 'b') }));
     const blende = $('blende'), blitz = $('blitz');
@@ -379,7 +381,7 @@ ${HF.SKRIPTE.map(s => `<script src="${basis}${s}"></script>`).join('\n')}
           const o = F.w2d.obj[tx.an.obj]; if (!o) continue;
           p = I.pos(F, o, t); rr = (o.typ === 'loch' ? o.r * 2.8 : o.r * 1.2) * s;
           if (tx.an.stelle) {
-            const amBoden = ['kind', 'baum', 'pflanze', 'kaktus', 'pinguin', 'wand', 'mast', 'vulkan', 'koerper'].includes(o.typ) || (o.typ === 'dino' && !['plesiosaurus', 'ichthyosaurus', 'mosasaurus', 'flugsaurier', 'trilobit', 'fisch', 'qualle'].includes(o.art));
+            const amBoden = ['kind', 'schleim', 'baum', 'pflanze', 'kaktus', 'pinguin', 'wand', 'mast', 'vulkan', 'koerper'].includes(o.typ) || (o.typ === 'dino' && !['plesiosaurus', 'ichthyosaurus', 'mosasaurus', 'flugsaurier', 'trilobit', 'fisch', 'qualle'].includes(o.art));
             const Hh = o.r * (o.typ === 'kind' ? 1.12 : 1), h2 = o.r * 0.55, mitteY = amBoden ? Hh * 0.5 : 0;
             const off = amBoden
               ? { oben: [0, Hh * 0.97], unten: [0, Hh * 0.03], links: [-Hh * 0.3, Hh * 0.5], rechts: [Hh * 0.3, Hh * 0.5], mitte: [0, Hh * 0.5] }[tx.an.stelle]

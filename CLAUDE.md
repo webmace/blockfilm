@@ -25,6 +25,12 @@ Erklärfilm-Generator: Claude schreibt ein Skript in einer deutschen Befehlsspra
   - Vorschau in der App: Ein iframe (`#hfVorschau`, `srcdoc`) liegt über der Canvas und wird über `__bfZeige(t)` gesteuert.
 - **Alte Engine** (three.js + Canvas2D, `szene.js`): für alles mit 3D-Blockwelt, Figuren, Physik oder Videoclips. Bilder werden einzeln an ffmpeg geschickt (`/api/video/*`).
 
+## Maskottchen Glibbi
+- `app/js/maskottchen.js` (Engine, beide Renderer): Befehl `maskottchen2d` (Typ `schleim`), `maskottchen aus`, automatische Auftritte nach jeder Kapitelkarte (Hook `BF.nachKompilieren`, Objekte mit `auto: true`). `kind2d mia` wird zu Glibbi (kleiner).
+- Zeichnung und Verhalten im neuen Stil: `OB.schleim` / `HF.bewegung.schleim` in `hf/figuren2d.js`. Wird beim Heranzoomen räumlicher (Tiefe, Glanz, Bläschen-Parallaxe).
+- Einmalige Dinge (Mond, Sonne, Erde …, gleicher Name): `neuesObjekt` (welt2d.js) blendet das alte aus, wenn ein neues dazukommt.
+- SVG-Klassennamen nicht doppelt vergeben: `.schatten` ist für Planeten reserviert (wird zur Sonne gedreht).
+
 ## Film-Übersicht und Hintergrund-Exporte
 - Button „🎬 Alle Filme“ (`#galerie`, ui.js): fertige Videos (Abspielen im `#spieler`), KI-Filme, Themen-Filme, eigene Skripte; jeweils Ansehen oder Exportieren.
 - Exporte von dort gehen in die Warteschlange `/api/stapel` (server.mjs). Sie laufen nacheinander als eigene Prozesse `server.mjs --render … --stimme … --sprechtempo … --alter …`. Themen-Filme werden vorher als Skript nach `~/.cache/blockfilm/stapel/` geschrieben.

@@ -15,9 +15,23 @@
   const FARBEN = { weiss: '#ffffff', gelb: '#ffe27a', orange: '#ffb04a', rot: '#ff6a4a', blau: '#8fb8ff', weissblau: '#cfe0ff', gruen: '#7fe08a' };
   const farbe = (h, s, d) => (s ? FARBEN[BF.norm(s)] || h.farbeWert(s) : d);
   function punkt(w) { w.fuell(); return [w.zahl(), w.zahl()]; }
+  // Dinge, die es nur einmal gibt: kommt ein neues dazu, wird das alte (noch sichtbare) ausgeblendet
+  const EINMAL_SYMBOL = { '🌙': 'mond', '🌕': 'mond', '🌛': 'mond', '🌜': 'mond', '🌝': 'mond', '🌖': 'mond', '🌗': 'mond', '🌘': 'mond', '🌒': 'mond', '🌓': 'mond', '🌔': 'mond', '☀': 'sonne', '🌞': 'sonne', '🌍': 'erde', '🌎': 'erde', '🌏': 'erde' };
+  function einmalArt(o) {
+    if (o.typ === 'planet' && !o.farbe && ['erde', 'mond', 'mars', 'jupiter', 'venus'].includes(o.art)) return o.art;
+    if (o.typ === 'zahl' && o.ohneRand) { const z = [...String(o.text).replace(/\ufe0f/g, '')]; if (z.length === 1 && EINMAL_SYMBOL[z[0]]) return EINMAL_SYMBOL[z[0]]; }
+    if (o.typ === 'stern' && /^sonne/.test(o.name)) return 'sonne';
+    if (o.typ === 'schleim') return 'maskottchen';
+    return null;
+  }
   function neuesObjekt(F, o) {
     const W = w2d(F);
     if (!W.an.length) W.an.push({ t: 0, an: true });
+    const art = einmalArt(o);
+    for (const alt of W.liste) {
+      if (!(alt.t1 > o.t0) || alt.t0 > o.t0) continue;
+      if (alt.name === o.name || (art && einmalArt(alt) === art)) alt.t1 = Math.min(alt.t1, o.t0 + 0.4);
+    }
     o.segs = []; o.t1 = Infinity;
     W.obj[o.name] = o; W.liste.push(o);
     return o;

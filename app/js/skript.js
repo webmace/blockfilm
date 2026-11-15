@@ -1312,6 +1312,7 @@
     F.koerper.sort((a, b) => a.t0 - b.t0);
     for (const k of F.koerper) ende = Math.max(ende, k.t0 + 2.5);
     F.dauer = F.festeDauer !== null ? F.festeDauer : Math.max(1, ende + 1);
+    for (const f of BF.nachKompilieren || []) { try { f(F); } catch (e) { console.error(e); } } // z. B. Maskottchen
     return F;
   };
 })();

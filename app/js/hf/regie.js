@@ -3,7 +3,7 @@
 (function () {
   const BF = (window.BF = window.BF || {});
   const HF = (BF.hf = BF.hf || {});
-  const AM_BODEN = ['kind', 'baum', 'pflanze', 'kaktus', 'pinguin', 'wand', 'mast', 'vulkan', 'koerper'];
+  const AM_BODEN = ['kind', 'schleim', 'baum', 'pflanze', 'kaktus', 'pinguin', 'wand', 'mast', 'vulkan', 'koerper'];
   const SCHWIMMER = ['plesiosaurus', 'ichthyosaurus', 'mosasaurus', 'flugsaurier', 'trilobit', 'fisch', 'qualle'];
   const steht = o => AM_BODEN.includes(o.typ) || (o.typ === 'dino' && !SCHWIMMER.includes(o.art));
   const zeit = t => t.toFixed(1).replace('.', ',') + ' s';
@@ -55,7 +55,7 @@
     let voll = 0;
     for (const s of sp) {
       const t = (s.t0 + s.t1) / 2;
-      const l = sichtbar(F, t).filter(o => !['huelle', 'luft', 'loch'].includes(o.typ));
+      const l = sichtbar(F, t).filter(o => !['huelle', 'luft', 'loch'].includes(o.typ) && !o.auto);
       if (l.length > 10 && voll < 3) { B.push(`Sehr volles Bild bei ${zeit(t)}: ${l.length} Objekte gleichzeitig. Ältere mit verstecke2d ausblenden.`); voll++; }
       const k = l.map(o => [o, kreis(F, o, t)]);
       for (let i = 0; i < k.length; i++) for (let j = i + 1; j < k.length; j++) {

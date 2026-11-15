@@ -231,6 +231,67 @@
     if (maul) c.r.setAttribute('transform', `translate(${f3(Math.sin(t * 60) * 0.004 * maul)} 0) scale(${dir} 1)`);
   };
 
+  // ---------- Maskottchen „Glibbi“: kleiner bunter Schleim (Ursprung = Fußpunkt, Höhe ≈ 0,85 · o.r) ----------
+  // Beim Heranzoomen wird er "ein bisschen 3D": Rundungs-Schatten, Glanz und Bläschen im Inneren mit Parallaxe.
+  const SCHLEIM_FORM = 'M-0.56 0 C-0.66 -0.06 -0.62 -0.3 -0.55 -0.42 C-0.46 -0.68 -0.26 -0.84 0 -0.85 C0.26 -0.84 0.46 -0.68 0.55 -0.42 C0.62 -0.3 0.66 -0.06 0.56 0 C0.5 0.035 0.42 0.02 0.36 0.04 C0.3 0.06 0.24 0.02 0.12 0.03 C0 0.045 -0.12 0.01 -0.24 0.035 C-0.36 0.06 -0.46 0.03 -0.56 0 Z';
+  OB.schleim = (o, stil, id) => {
+    const P = stil.palette, a = P.pink, b = P.lila, c = P.tuerkis;
+    const bl = [[-0.28, -0.22, 0.07, P.gelb], [0.25, -0.3, 0.05, P.weiss], [0.05, -0.12, 0.045, P.gelb], [-0.12, -0.66, 0.035, P.weiss], [0.32, -0.12, 0.06, P.orange], [-0.36, -0.42, 0.04, P.tuerkis]];
+    return {
+      k: 1.05,
+      svg: `<defs>
+<linearGradient id="${id}g" x1="0" y1="-0.85" x2="0" y2="0.05" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="${hell(a, 0.05)}"/><stop offset="0.5" stop-color="${b}"/><stop offset="1" stop-color="${c}"/></linearGradient>
+<radialGradient id="${id}r" cx="-0.18" cy="-0.55" r="0.95" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#ffffff" stop-opacity="0.45"/><stop offset="0.45" stop-color="#ffffff" stop-opacity="0"/><stop offset="0.8" stop-color="${dunkel(b, 0.3)}" stop-opacity="0.15"/><stop offset="1" stop-color="${dunkel(b, 0.35)}" stop-opacity="0.55"/></radialGradient>
+<clipPath id="${id}c"><path d="${SCHLEIM_FORM}"/></clipPath></defs>
+<ellipse class="bodenschatten" cx="0" cy="0.03" rx="0.6" ry="0.07" fill="rgba(0,0,0,0.2)"/>
+<g class="huepf"><g class="wackel">
+<path d="${SCHLEIM_FORM}" fill="url(#${id}g)"/>
+<g clip-path="url(#${id}c)"><g class="blasen">${bl.map(([x, y, r, f]) => `<circle cx="${x}" cy="${y}" r="${r}" fill="${f}" opacity="0.75"/><circle cx="${f3(x - r * 0.3)}" cy="${f3(y - r * 0.3)}" r="${f3(r * 0.35)}" fill="#fff" opacity="0.7"/>`).join('')}</g>
+<g class="tiefe"><path d="${SCHLEIM_FORM}" fill="url(#${id}r)"/><path d="M-0.5 -0.05 C-0.3 0.02 0.3 0.02 0.5 -0.05 L0.6 0.1 L-0.6 0.1 Z" fill="${rgba(dunkel(c, 0.25), 0.45)}"/></g></g>
+<path class="rand" d="M-0.47 -0.5 C-0.38 -0.72 -0.2 -0.8 0 -0.81" stroke="#fff" stroke-opacity="0.35" stroke-width="0.03" stroke-linecap="round" fill="none"/>
+<ellipse class="glanz" cx="-0.24" cy="-0.62" rx="0.13" ry="0.075" transform="rotate(-28 -0.24 -0.62)" fill="#fff" opacity="0.8"/><circle class="glanz2" cx="-0.07" cy="-0.73" r="0.03" fill="#fff" opacity="0.8"/>
+<g class="gesicht">
+${[-1, 1].map(sg => `<g class="auge" transform="translate(${f3(sg * 0.17)} -0.47)"><ellipse rx="0.125" ry="0.14" fill="#fff"/><g class="pupille"><circle r="0.07" fill="${P.schwarz}"/><circle cx="0.025" cy="-0.03" r="0.024" fill="#fff"/></g></g>`).join('')}
+${[-1, 1].map(sg => `<ellipse cx="${f3(sg * 0.33)}" cy="-0.3" rx="0.07" ry="0.04" fill="${rgba(P.rot, 0.35)}"/>`).join('')}
+<g class="mund" transform="translate(0 -0.28)"><ellipse class="mo" rx="0.08" ry="0.03" fill="${dunkel(P.rot, 0.35)}"/><ellipse class="zunge" cy="0.015" rx="0.045" ry="0.012" fill="${P.pink}"/></g>
+</g></g></g>`,
+    };
+  };
+  BW.schleim = (el, o, t, F, q, I) => {
+    const c = el._bf || (el._bf = {
+      h: el.querySelector('.huepf'), w: el.querySelector('.wackel'), bl: el.querySelector('.blasen'), tiefe: el.querySelector('.tiefe'), glanz: el.querySelector('.glanz'),
+      augen: [...el.querySelectorAll('.auge')], pup: [...el.querySelectorAll('.pupille')], mo: el.querySelector('.mo'), zunge: el.querySelector('.zunge'), schatten: el.querySelector('.bodenschatten'),
+    });
+    const K = I.kamera(F, t);
+    // Hüpfen beim Laufen, sonst sanft schweben oder wackeln
+    let hy = 0, quetsch = Math.sin(t * 2.2 + o.r) * 0.035;
+    const seg = (o.segs || []).find(s => s.typ === 'zu' && t >= s.t0 && t < s.t1);
+    if (seg) { const ph = Math.abs(Math.sin((t - seg.t0) * 9)); hy = -ph * 0.22; quetsch = (1 - ph) * 0.12 - 0.04; }
+    else if (o.schweben) hy = -0.12 + Math.sin(t * 1.8 + o.r) * 0.05;
+    c.h.setAttribute('transform', `translate(0 ${f3(hy)})`);
+    c.w.setAttribute('transform', `scale(${f3(1 + quetsch)} ${f3(1 - quetsch)})`);
+    c.schatten.setAttribute('rx', f3(0.6 * (1 + hy * 0.8)));
+    // "ein bisschen 3D" beim Heranzoomen: Schatten und Glanz kräftiger, Bläschen verschieben sich räumlich
+    const z = clamp((K.z - 1) / 0.8, 0, 1);
+    c.tiefe.setAttribute('opacity', f3(0.45 + 0.55 * z));
+    c.glanz.setAttribute('opacity', f3(0.7 + 0.3 * z));
+    const px = clamp((q[0] - K.x) / 50, -1, 1), py = clamp((q[1] - K.y) / 28, -1, 1);
+    c.bl.setAttribute('transform', `translate(${f3(-px * 0.06 * (0.3 + z))} ${f3(py * 0.04 * (0.3 + z))})`);
+    // Blinzeln
+    const zu = ((t + o.r * 1.3) % 3.7) < 0.13;
+    c.augen.forEach((a, i) => a.setAttribute('transform', `translate(${i ? 0.17 : -0.17} -0.47) scale(1 ${zu ? 0.12 : 1})`));
+    // schaut zum neuesten Ding im Bild
+    let ziel = null;
+    for (const x of F.w2d.liste) if (x !== o && x.typ !== 'schleim' && t >= x.t0 && t < (x.t1 ?? Infinity) && (!ziel || x.t0 > ziel.t0)) ziel = x;
+    let dx = 0, dy = 0;
+    if (ziel) { const p = I.pos(F, ziel, t), l = Math.hypot(p[0] - q[0], p[1] - q[1]) || 1; dx = (p[0] - q[0]) / l * 0.04; dy = -(p[1] - q[1] - 6) / l * 0.03; }
+    c.pup.forEach(pu => pu.setAttribute('transform', `translate(${f3(dx)} ${f3(clamp(dy, -0.04, 0.04))})`));
+    // Mund bewegt sich, wenn gesprochen wird
+    const spricht = (F.sprache || []).some(s => t >= s.t0 && t < s.t1);
+    const auf = spricht ? 0.02 + Math.abs(Math.sin(t * 13)) * 0.06 : 0.025;
+    c.mo.setAttribute('ry', f3(auf)); c.zunge.setAttribute('opacity', spricht ? 1 : 0);
+  };
+
   // ---------- Geräte: Handy, Tablet, Laptop, PC mit wechselnden Bildschirmen ----------
   const BILDER = ['apps', 'foto', 'anruf', 'spiel', 'video', 'nachricht', 'internet', 'code', 'aus'];
   function bildschirm(bild, x, y, b, h, stil, id) {
