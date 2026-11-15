@@ -49,11 +49,12 @@ So arbeitest du:
   * Jedes Kapitel beginnt mit einem passenden hintergrund (z. B. erde, zimmer, meer, weltraum, tafel) und endet damit, dass alle Objekte des Kapitels mit verstecke2d ausgeblendet werden.
   * Auf dem Boden stehende Dinge bei y = -11, nichts Wichtiges unter y = -20 (dort stehen die Untertitel). Objekte nicht übereinander stapeln, lieber nebeneinander von x -40 bis 40.
   * Bewegung macht Filme lebendig: bewege2d, kippe2d, kamera2d (Heranzoomen), wachsen2d, faerbe2d.
+  * Der Film wird im flachen, bunten Erklärvideo-Stil gezeichnet (wie bei Kurzgesagt): Bevorzuge gezeichnete Objekte (kind2d, stern2d, planet2d, wolke2d, apfel2d, form2d, zahl2d …) vor symbol2d-Bildzeichen und nutze für Zeit- oder Ortsangaben ein Band oben links mit text "Vor 6 Millionen Jahren" oben fuer 3. Jedes Kapitel bekommt eine Kapitelkarte mit kapitel "…".
   * Prüfe am Ende jeden Sprecher-Satz einmal: Was sieht das Kind in diesem Moment? Wenn das Bild leer ist oder nicht passt, ergänze ein Objekt oder symbol2d.
 - Nutze die 3D-Blockwelt mit freundlichen Figuren und Tieren (figur, tier, welt, himmel, baue …) für Alltagsthemen, Tiere, Gefühle und Geschichten. Mit "ohnevideo" oder "hintergrund aus" schaltest du zurück auf die 3D-Welt.
 - Benutze eine Figur namens "ich" (ohne Farben, dann trägt sie den Skin des Nutzers) als freundliche Begleitfigur, wenn es passt.
 - Benutze KEINE Befehle "video", "standbild" oder "bild" (es gibt keine Dateien) und nur Befehle, die in der Befehlsliste stehen.
-- Beginne mit: film 4k fps 30 titel "…", dann bei Kindern bis 9 Jahre "stimme standard tempo 0.88" und "sprechpause 0.9" (langsamer sprechen, kurze Pausen), dann kapitel "…". Keine Musik (kein Befehl "musik").
+- Beginne mit: film 4k fps 30 titel "…", gleich danach "zielgruppe …" (das Alter aus der Anfrage: 0-2, 3-5, 6-9 oder 10+; es bestimmt den Bildstil), dann bei Kindern bis 9 Jahre "stimme standard tempo 0.88" und "sprechpause 0.9" (langsamer sprechen, kurze Pausen), dann kapitel "…". Keine Musik (kein Befehl "musik").
 - Setze stattdessen passende Geräusche mit "ton …" an die richtigen Stellen (z. B. plopp wenn etwas erscheint, magie bei Licht, explosion/knall/donner bei großen Ereignissen, jubel/tada am Ende, sprung, schwung, glocke). Effekte wie tnt, explosion, blitz, feuerwerk und kollaps2d machen ihre Geräusche von selbst.
 - Ende mit einer kurzen Zusammenfassung (tafel bei älteren Kindern, ein gereimter Merksatz bei kleinen) und "ausblenden 1.5".
 - Achte auf Zeitregeln: Zeilen laufen nacheinander, "&" am Zeilenanfang läuft gleichzeitig mit der Zeile davor. Text, tafel, formel, kreis, zeiger laufen nebenher. 2D-Positionen: Bildmitte 0 0, das Bild ist 100 Einheiten breit und etwa 56 hoch. Kreis/Zeiger-Positionen sind Prozent vom Bild.
@@ -87,7 +88,7 @@ export async function kiSkript({ thema, alter = '3-5', stil = 'echt', vorher = n
   const norm = String(thema).toLowerCase().replace(/ä/g, 'ae').replace(/ö/g, 'oe').replace(/ü/g, 'ue').replace(/ß/g, 'ss');
   const wasWaere = /(was\s+(passiert|passierte|geschieht|waere|wuerde|wird)\w*\b.{0,40}\bwenn\b|was\s+waere\s*,?\s*(wenn|ohne)|\bstell\s+(dir|euch)\s+vor\b|\bangenommen\b|gedankenexperiment|was\s+(waere|wuerde)\s+.{0,30}\b(ohne|keine?n?)\b|\bwenn\b.{0,60}\bwas\s+(dann|passiert))/.test(norm);
   const laenge = wasWaere ? `\nDas ist eine Was-wäre-wenn-Frage. Der Film soll ausführlicher sein als sonst: etwa 10 Minuten lang (bei 0–2 Jahren trotzdem nur 1 Minute; bei 3–5 Jahren etwa 90 bis 100 Sprecher-Sätze, ab 6 Jahren etwa 110 bis 130), in 6 bis 8 Kapiteln. Spiel mehrere Folgen und Varianten durch (z. B. plötzlich und langsam, für Menschen, Tiere, Pflanzen, Wetter) und erkläre am Anfang, wie es in Wirklichkeit ist.` : '';
-  const nachrichten = [{ role: 'user', content: `Thema: ${thema}\nZielgruppe: ${ALTER[alter] || ALTER['3-5']}\n${STIL[stil] || STIL.echt}${laenge}\n\nSchreib das Blockfilm-Skript.` }];
+  const nachrichten = [{ role: 'user', content: `Thema: ${thema}\nZielgruppe: ${ALTER[alter] || ALTER['3-5']}\nSchreibe direkt nach der film-Zeile: zielgruppe ${ALTER[alter] ? alter : '3-5'}\n${STIL[stil] || STIL.echt}${laenge}\n\nSchreib das Blockfilm-Skript.` }];
   if (vorher) {
     nachrichten.push({ role: 'assistant', content: '```blockfilm\n' + vorher + '```' });
     let bitte = '';

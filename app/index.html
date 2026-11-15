@@ -56,7 +56,7 @@
     <div class="fehler" id="fehler"></div>
   </section>
   <section class="rechts">
-    <div class="buehne" id="buehne"><div class="vb-hinweis" id="vbHinweis">Klick: Abspielen/Pause · Leertaste · Esc: Vollbild beenden</div><canvas id="ausgabe" title="Klick: Abspielen/Pause · Strg+Klick: Position (x y) ins Skript einfügen"></canvas><div class="laden" id="laden">Lade …</div></div>
+    <div class="buehne" id="buehne"><div class="vb-hinweis" id="vbHinweis">Klick: Abspielen/Pause · Leertaste · Esc: Vollbild beenden</div><canvas id="ausgabe" title="Klick: Abspielen/Pause · Strg+Klick: Position (x y) ins Skript einfügen"></canvas><iframe id="hfVorschau" class="hf-vorschau" hidden tabindex="-1" title="Vorschau im neuen Bildstil"></iframe><div class="laden" id="laden">Lade …</div></div>
     <div class="steuer">
       <button id="b-vollbild" title="Vollbild (Taste F oder Doppelklick ins Bild, zurück mit Esc)">⛶ Vollbild</button>
       <button id="b-anfang" title="Zum Anfang (Pos1)">⏮</button>
@@ -70,6 +70,7 @@
       <button id="ausspracheKnopf" title="Wörter, die die Stimme falsch ausspricht, verbessern">Aussprache</button>
       <label class="schalter regler" title="Lautstärke der Vorlese-Stimme">🔊 <input type="range" id="lautStimme" min="0" max="100" value="55"></label>
       <label class="schalter regler" title="Lautstärke der Geräusche">💥 <input type="range" id="lautGeraeusche" min="0" max="100" value="45"></label>
+      <label class="schalter" title="Vorschau im neuen Bildstil – so sieht das fertige Video aus (nur für Filme mit der 2D-Welt)"><input type="checkbox" id="neuerStil" checked> 🎨 Neuer Stil</label>
       <select id="vorschauQ" title="Vorschau-Qualität">
         <option value="0.5">Vorschau: schnell</option>
         <option value="0.75" selected>Vorschau: mittel</option>
@@ -182,6 +183,13 @@
 <script src="js/klartext.js"></script>
 <script src="js/szene.js"></script>
 <script src="js/ton.js"></script>
+<script src="js/hf/stile.js"></script>
+<script src="js/hf/twemoji-liste.js"></script>
+<script src="js/hf/grafik.js"></script>
+<script src="js/hf/figuren2d.js"></script>
+<script src="js/hf/keime2d.js"></script>
+<script src="js/hf/rest2d.js"></script>
+<script src="js/hf/komponiere.js"></script>
 <script src="js/ui.js"></script>
 </body>
 </html>

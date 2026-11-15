@@ -36,7 +36,7 @@ for (let i = 0; i < args.length; i++) {
   if (!a.startsWith('-')) skriptDatei = path.resolve(a);
 }
 
-const TYPEN = { '.webp': 'image/webp', '.gif': 'image/gif', '.wav': 'audio/wav', '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.css': 'text/css; charset=utf-8', '.md': 'text/markdown; charset=utf-8', '.png': 'image/png', '.jpg': 'image/jpeg', '.svg': 'image/svg+xml', '.txt': 'text/plain; charset=utf-8', '.mp4': 'video/mp4' };
+const TYPEN = { '.webp': 'image/webp', '.gif': 'image/gif', '.wav': 'audio/wav', '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.css': 'text/css; charset=utf-8', '.md': 'text/markdown; charset=utf-8', '.png': 'image/png', '.jpg': 'image/jpeg', '.svg': 'image/svg+xml', '.txt': 'text/plain; charset=utf-8', '.mp4': 'video/mp4', '.woff2': 'font/woff2' };
 
 function koerper(req) {
   return new Promise((ok, nein) => {
@@ -211,6 +211,67 @@ function piperProzess(datei, tempo) {
 }
 process.on('exit', () => { for (const l of piperPool.values()) for (const pr of l) try { pr.proc.kill(); } catch {} });
 let tonDatei = null;
+
+// ---------- HyperFrames: Komposition in einen Projektordner schreiben und mit @hyperframes/producer rendern ----------
+let hfJob = null;
+const HF_ORDNER = path.join(CACHE, 'hf');
+function chromiumPfad() {
+  for (const p of [process.env.PRODUCER_HEADLESS_SHELL_PATH, '/usr/bin/chromium', '/usr/bin/chromium-browser', '/usr/bin/google-chrome', '/usr/bin/google-chrome-stable']) if (p && fs.existsSync(p)) return p;
+  return null;
+}
+async function hfStarten(o) {
+  const fps = Math.max(1, Math.round(Number(o.fps) || 30));
+  const name = (o.name || 'blockfilm').replace(/[^\wäöüÄÖÜß\- ]+/g, '').trim().replace(/\s+/g, '_') || 'blockfilm';
+  const stempel = new Date().toISOString().slice(0, 19).replace(/[:T]/g, '-');
+  const ziel = o.aus ? path.resolve(o.aus) : path.join(VIDEOS, `${name}_${stempel}.mp4`);
+  fs.mkdirSync(path.dirname(ziel), { recursive: true });
+  // Projektordner: index.html + die Engine-Skripte, Schriften und der fertig gemischte Ton
+  const ordner = path.join(HF_ORDNER, `${stempel}-${process.pid}-${crypto.randomBytes(3).toString('hex')}`);
+  fs.mkdirSync(ordner, { recursive: true });
+  fs.writeFileSync(path.join(ordner, 'index.html'), String(o.html || ''));
+  fs.cpSync(path.join(APP, 'js'), path.join(ordner, 'js'), { recursive: true });
+  fs.cpSync(path.join(APP, 'vendor'), path.join(ordner, 'vendor'), { recursive: true, filter: q => !q.includes(path.sep + 'twemoji') });
+  // von den Emoji-Grafiken nur die, die der Film wirklich benutzt
+  const emojis = new Set([...String(o.html || '').matchAll(/vendor\/twemoji\/([0-9a-f-]+)\.svg/g)].map(m => m[1]));
+  if (emojis.size) {
+    fs.mkdirSync(path.join(ordner, 'vendor', 'twemoji'), { recursive: true });
+    for (const n of emojis) { const q = path.join(APP, 'vendor', 'twemoji', n + '.svg'); if (fs.existsSync(q)) fs.copyFileSync(q, path.join(ordner, 'vendor', 'twemoji', n + '.svg')); }
+  }
+  if (o.ton && tonDatei && fs.existsSync(tonDatei)) fs.copyFileSync(tonDatei, path.join(ordner, 'ton.wav'));
+  if (!process.env.PRODUCER_HEADLESS_SHELL_PATH) { const c = chromiumPfad(); if (c) process.env.PRODUCER_HEADLESS_SHELL_PATH = c; }
+  const { createRenderJob, executeRenderJob } = await import('@hyperframes/producer');
+  const job = createRenderJob({ fps: { num: fps, den: 1 }, quality: o.qualitaet === 'entwurf' ? 'draft' : 'standard', format: 'mp4' });
+  const abbruch = new AbortController();
+  const J = hfJob = { ziel, ordner, abbruch, start: Date.now(), anteil: 0, text: 'Starte …', bild: null, bilder: null, fertig: false, ok: null, fehler: null, abgebrochen: false };
+  executeRenderJob(job, ordner, ziel, (j, msg) => {
+    const m = /frame (\d+)\s*\/\s*(\d+)/i.exec(msg || '');
+    if (m) { J.bild = +m[1]; J.bilder = +m[2]; }
+    const p = Number(j && j.progress);
+    if (Number.isFinite(p)) J.anteil = Math.max(J.anteil, Math.min(1, p / 100));
+    J.text = String(msg || '');
+  }, abbruch.signal).then(() => {
+    J.ok = true; J.anteil = 1;
+  }).catch(e => {
+    J.ok = false; J.fehler = J.abgebrochen ? 'abgebrochen' : String(e && e.message || e);
+    if (J.abgebrochen) try { fs.rmSync(ziel, { force: true }); } catch {}
+  }).finally(() => {
+    J.fertig = true;
+    if (!process.env.BF_HF_BEHALTEN) try { fs.rmSync(ordner, { recursive: true, force: true }); } catch {}
+  });
+  return { ok: true, datei: ziel };
+}
+function hfStatus() {
+  const J = hfJob;
+  if (!J) return { aktiv: false };
+  const verg = (Date.now() - J.start) / 1000;
+  const rest = J.anteil > 0.03 && !J.fertig ? verg / J.anteil * (1 - J.anteil) : null;
+  let groesse = null;
+  if (J.fertig && J.ok) try { groesse = fs.statSync(J.ziel).size; } catch {}
+  const text = J.fertig ? (J.ok ? 'Fertig' : 'Fehler: ' + J.fehler)
+    : J.bild ? `Bild ${J.bild} von ${J.bilder}${rest !== null ? ' · noch etwa ' + (rest > 90 ? Math.round(rest / 60) + ' min' : Math.round(rest) + ' s') : ''}`
+    : /encod|assembl|mux/i.test(J.text) ? 'Video wird fertig verpackt …' : 'Bereite vor …';
+  return { aktiv: !J.fertig, fertig: J.fertig, ok: J.ok, fehler: J.fehler, anteil: J.anteil, text, datei: J.ziel, groesse };
+}
 
 function liste(ordner) {
   try {
@@ -411,6 +472,17 @@ async function anfrage(req, res) {
       if (video) { try { video.proc.kill('SIGKILL'); fs.rmSync(video.ziel, { force: true }); } catch {} video = null; }
       return json(res, { ok: true });
     }
+    // ---------- Export mit HyperFrames (2D-Filme im neuen Bildstil) ----------
+    if (p === '/api/hf/start' && req.method === 'POST') {
+      const o = JSON.parse((await koerper(req)).toString('utf8'));
+      if (hfJob && !hfJob.fertig) return json(res, { ok: false, fehler: 'Es läuft schon ein Export.' });
+      return json(res, await hfStarten(o));
+    }
+    if (p === '/api/hf/status') return json(res, hfStatus());
+    if (p === '/api/hf/abbrechen' && req.method === 'POST') {
+      if (hfJob && !hfJob.fertig) { hfJob.abgebrochen = true; hfJob.abbruch.abort(); }
+      return json(res, { ok: true });
+    }
     if (p === '/api/fortschritt' && req.method === 'POST') {
       const o = JSON.parse((await koerper(req)).toString('utf8'));
       if (renderModus) {
@@ -493,6 +565,7 @@ async function exporteLesen() {
   }
   // 2. Export im App-Fenster
   if (video) laufend.push({ pid: null, art: 'fenster', name: 'Export im Blockfilm-Fenster', ziel: video.ziel || null, text: 'läuft im Fenster', anteil: null });
+  if (hfJob && !hfJob.fertig && !renderModus) { const st = hfStatus(); laufend.push({ pid: null, art: 'fenster', name: 'Export im Blockfilm-Fenster (neuer Bildstil)', ziel: hfJob.ziel, text: st.text, anteil: st.anteil, ...fortschrittAus(st.text) }); }
   // 3. Nacht-Export
   const naechster = (await ausfuehren('systemctl', ['--user', 'show', 'blockfilm-nachtfilme.timer', '-p', 'NextElapseUSecRealtime', '--value'])).trim();
   const dienstAktiv = (await ausfuehren('systemctl', ['--user', 'is-active', 'blockfilm-nachtfilme.service'])).trim() === 'active';
@@ -521,6 +594,7 @@ async function exporteLesen() {
 function beenden(code = 0) {
   if (browser) try { browser.kill('SIGTERM'); } catch {}
   if (video) try { video.proc.kill('SIGKILL'); } catch {}
+  if (hfJob && !hfJob.fertig) try { hfJob.abgebrochen = true; hfJob.abbruch.abort(); } catch {}
   if (renderModus) try { fs.rmSync(path.join(EXPORT_STATUS, process.pid + '.json'), { force: true }); } catch {}
   if (tonDatei) try { fs.rmSync(tonDatei, { force: true }); } catch {}
   setTimeout(() => process.exit(code), 200);

@@ -90,6 +90,11 @@ film 1080p fps 30 titel "Mein Film"
 Auflösungen: `4k`, `1440p`, `1080p`, `720p`, `hochkant` (1080×1920 für Shorts), `quadrat`, oder `2560x1080`.
 `fps 60` · `film dauer 30` · `ende` (Film endet hier)
 
+```
+zielgruppe 3-5
+```
+Legt den Bildstil fest (`0-2`, `3-5`, `6-9`, `10+`): Farben, Schrift und wie lebhaft Dinge erscheinen und sich bewegen. Ohne diesen Befehl gilt die Auswahl in der App. Filme nur mit der 2D-Welt werden im neuen Flat-Look (wie bei Erklärvideos auf YouTube) mit HyperFrames gebaut; Filme mit der 3D-Blockwelt sehen aus wie bisher.
+
 ## Musik und Töne
 
 `musik froehlich` (auch: ruhig, spannend, episch, traurig, gruselig, aus) – wird beim Sprechen leiser.

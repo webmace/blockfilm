@@ -688,13 +688,17 @@
   }
 
   // ---------- Zeichnen ----------
+  BF.w2dIntern = { pos: (F, o, t) => pos(F, o, t), kamera: (F, t) => kamera(F, t), wertBei: (l, t, s) => wertBei(l, t, s), FARBEN };
   const sterne = (() => { const r = BF.rng(2024); const a = []; for (let i = 0; i < 900; i++) a.push([(r() - 0.5) * 360, (r() - 0.5) * 220, r() * 1.2 + 0.25, r(), r()]); return a; })();
   const leinwand = document.createElement('canvas');
   BF.welt2dLeinwand = leinwand;
 
-  BF.welt2dZeichnen = function (F, t, w, h) {
-    if (leinwand.width !== w || leinwand.height !== h) { leinwand.width = w; leinwand.height = h; }
-    const ctx = leinwand.getContext('2d');
+  // opt (für HyperFrames): ziel = eigene Leinwand, hgLassen(art) = Hintergrund nicht malen, objLassen(o) = Objekt nicht malen
+  BF.welt2dZeichnen = function (F, t, w, h, opt = {}) {
+    const lw = opt.ziel || leinwand;
+    if (lw.width !== w || lw.height !== h) { lw.width = w; lw.height = h; }
+    const ctx = lw.getContext('2d');
+    if (opt.ziel) ctx.clearRect(0, 0, w, h);
     const K = kamera(F, t);
     const s = (w / 100) * K.z; // Pixel pro Einheit
     const X = x => w / 2 + (x - K.x) * s, Y = y => h / 2 - (y - K.y) * s;
@@ -708,7 +712,7 @@
       return { o, p, r: o.r * wachsen, sx: X(p[0]), sy: Y(p[1]) };
     });
     const hgZeichnen = (art, alpha) => {
-      if (alpha <= 0) return;
+      if (alpha <= 0 || (opt.hgLassen && opt.hgLassen(art))) return;
       ctx.save(); ctx.globalAlpha = alpha;
       if (art === 'weltraum' || art === 'all' || art === 'space') { ctx.fillStyle = '#060818'; ctx.fillRect(0, 0, w, h); }
       else if (art === 'abend' || art === 'sonnenuntergang') {
@@ -754,6 +758,7 @@
       hgZeichnen(hg, 1);
     }
     function weltallSterne(alpha) {
+      if (opt.hgLassen && opt.hgLassen('weltraum')) return;
       ctx.save(); ctx.globalAlpha = alpha;
       for (const st of sterne) {
         const sx = w / 2 + (st[0] - K.x * 0.35) * s * 0.9, sy = h / 2 - (st[1] - K.y * 0.35) * s * 0.9;
@@ -763,7 +768,7 @@
       }
       ctx.restore();
     }
-    if (istAll(hg) && !(hgU < 1 && hgAlt && !istAll(hgAlt))) {
+    if (istAll(hg) && !(hgU < 1 && hgAlt && !istAll(hgAlt)) && !(opt.hgLassen && opt.hgLassen(hg))) {
       const g = ctx.createRadialGradient(w * 0.5, h * 0.45, 0, w * 0.5, h * 0.5, w * 0.8);
       g.addColorStop(0, '#0d1230'); g.addColorStop(0.6, '#060818'); g.addColorStop(1, '#020309');
       ctx.fillStyle = g; ctx.fillRect(0, 0, w, h);
@@ -800,6 +805,7 @@
     // Objekte
     for (const o of F.w2d.liste) {
       if (t < o.t0 || t >= o.t1 || o.typ === 'loch') continue;
+      if (opt.objLassen && opt.objLassen(o)) continue;
       const p = pos(F, o, t);
       const sx = X(p[0]), sy = Y(p[1]);
       let r = o.r * s;
@@ -1094,7 +1100,7 @@
     // Schwarze Löcher (über allem)
     for (const L of loecher) loch(ctx, L, t, s, E);
     // Beschriftungen
-    for (const tx of F.w2d.texte) {
+    for (const tx of (opt.ohneTexte ? [] : F.w2d.texte)) {
       if (t < tx.t0 || t >= tx.t1) continue;
       let p = tx.an.p, rr = 0, ziel = null, richtung = [0, 1];
       if (tx.an.obj) {
@@ -1130,7 +1136,7 @@
       ctx.fillStyle = '#ffffff'; ctx.fillText(tx.text, x, y + 1);
       ctx.restore();
     }
-    return leinwand;
+    return lw;
   };
 
   function loch(ctx, L, t, s, E) {

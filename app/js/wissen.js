@@ -793,6 +793,7 @@
       // Tafel, Formel, Diagramm, Zähler, Stoppuhr
       for (const u of F.ueber || []) {
         if (t < u.t0 || t >= u.t1) continue;
+        if (szene.ueberLassen && szene.ueberLassen(u)) continue;
         const ein = clamp((t - u.t0) / 0.35, 0, 1) * clamp((u.t1 - t) / 0.35, 0, 1);
         ctx.save();
         ctx.globalAlpha = ein;

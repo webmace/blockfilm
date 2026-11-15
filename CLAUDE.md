@@ -1,0 +1,36 @@
+# Blockfilm
+
+Erklärfilm-Generator: Claude schreibt ein Skript in einer deutschen Befehlssprache (`BEFEHLE.md`), `BF.kompiliere()` (app/js/skript.js) macht daraus den Ablaufplan `F`, daraus wird ein Video.
+
+## Start
+- `node server.mjs [skript.txt]`: App-Fenster öffnen (Port 47811)
+- `node server.mjs --server`: nur der Server (`BF_PORT`, Standard 47812)
+- `node server.mjs --render skript.txt -o film.mp4 [--720p|--1080p|--4k]`: headless exportieren
+- Es gibt keine Tests und keinen Build-Schritt. Das Frontend besteht aus einfachen IIFE-Skripten am globalen `window.BF`.
+
+## Zwei Renderer
+- **HyperFrames** (`app/js/hf/`): für Filme, die nur die 2D-Welt nutzen (`BF.hf.passt(F)`). Flat-Look im Kurzgesagt-Stil, je nach Zielgruppe.
+  - `stile.js`: ein Stil pro Zielgruppe `0-2 | 3-5 | 6-9 | 10+` (Palette, Schrift, Rundheit, GSAP-Eases). Dazu der Skriptbefehl `zielgruppe`.
+  - `grafik.js`: SVG-Hintergründe mit Parallax-Ebenen und SVG-Objekte. `HF.portiert(o)` sagt, welche 2D-Objekte schon als SVG existieren.
+  - `rest2d.js`: alle übrigen 2D-Objekte (Akku, Atome, Auge, Bits, Blatt, Geist, Hülle, Kaktus, Kontinente, Luft, Mast, Meteor, Pinguin, Pixel, Pizza, Rakete, Regenbogen, Thermometer, Vulkan, Wand, Zeitleiste). Nur das schwarze Loch (`loch`) zeichnet bewusst weiter der alte Zeichner (Gravitationslinse).
+  - `twemoji-liste.js` + `app/vendor/twemoji/`: `symbol2d`-Emojis werden als flache Twemoji-SVGs gezeigt (CC-BY 4.0, siehe `LIZENZ.txt`). Der Export kopiert nur die benutzten Dateien.
+  - `keime2d.js`: Virus, Bakterie (mit Teilung), Zelle, Abwehrzelle, Antikörper und der Körper mit Organen (Herz, Blut, Nerven, Lunge, Essen, Winken).
+  - `figuren2d.js`: Dinos (Geometrie aus `BF.DINO_ARTEN` in urzeit.js), Meerestiere und Flugsaurier, Geräte mit Bildschirmen, Pflanzen und Bäume. Was von der Lage abhängt (Blickrichtung, Laufen, Brüllen, Bildschirmwechsel), setzt `HF.bewegung[typ](el, o, t, F, pos, I)` bei jedem Seek.
+  - `komponiere.js`:
+    - `HF.komponiere(F, daten)` baut in der App das statische HTML.
+    - `HF.starte(daten)` läuft in der Komposition: Es übersetzt dasselbe Skript noch einmal, baut die GSAP-Timeline (`window.__timelines.film`) und hört auf `hf-seek`.
+    - Positionen und Kamera kommen aus `BF.w2dIntern` (welt2d.js).
+    - Noch nicht portierte Objekte, `zeichne2D`-Hilfen, Diagramme und Zähler zeichnet der alte Canvas-Zeichner in `#leinwand`.
+  - Export: `/api/hf/start` (server.mjs) kopiert `app/js` + `app/vendor` in `~/.cache/blockfilm/hf/<id>/` und rendert mit `@hyperframes/producer`. Mit `BF_HF_BEHALTEN=1` bleibt der Ordner zum Untersuchen erhalten.
+  - Vorschau in der App: Ein iframe (`#hfVorschau`, `srcdoc`) liegt über der Canvas und wird über `__bfZeige(t)` gesteuert.
+- **Alte Engine** (three.js + Canvas2D, `szene.js`): für alles mit 3D-Blockwelt, Figuren, Physik oder Videoclips. Bilder werden einzeln an ffmpeg geschickt (`/api/video/*`).
+
+## Regeln für die Komposition
+- Deterministisch: kein `Date.now()`, kein `Math.random()` (stattdessen `HF.zufall(seed)` / `BF.rng`), keine Timer, kein `repeat: -1`. Alles muss allein von der Zeit abhängen.
+- Die App und die Komposition müssen dasselbe `F` berechnen. Was die Übersetzung beeinflusst, kommt deshalb in `laufDaten`: Skript, Sprechdauern zum Zeitpunkt des Kompilierens (`S.sprachStand`), `BF.stimmeWahl`, Zielgruppe. Passt etwas nicht, meldet `HF.starte` „Komposition passt nicht zum Skript“ in der Konsole.
+- Neues 2D-Objekt im neuen Stil: in `grafik.js` `OB.<typ> = (o, stil, id) => ({ k, svg })` anlegen. Gezeichnet wird in Einheiten von `o.r` um den Positionspunkt, der Bereich geht von -k bis k. Farben immer über `HF.stilFarbe` / `stil.palette`.
+- In SVG-`style`-Attributen keine doppelten Anführungszeichen (Schriftnamen wie `"Nunito"` vorher in `'` umwandeln).
+- Schriften liegen lokal in `app/vendor/fonts` (OFL), GSAP in `app/vendor/gsap.min.js`. Die App läuft offline, also keine CDNs.
+
+## Standbilder zum Testen
+Eine Komposition mit `vorschau: true` bauen und mit Puppeteer (`node_modules/puppeteer-core`, Chromium unter `/usr/bin/chromium`) laden. Dann `window.__bfZeige(t)` aufrufen und einen Screenshot machen.

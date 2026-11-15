@@ -61,6 +61,7 @@
       koerper: [0, 0.55, 0.42, 0.3, 0.05], kopf: [0.42, 0.72, 0.2, 0.22], schwanz: [[-0.42, 0.62, 0.04], [-0.55, 0.42, 0]],
       vorne: [0.24, 0.42, 0.25, 0.12], hinten: [-0.24, 0.42, -0.24, 0.12] },
   };
+  BF.DINO_ARTEN = DINOS; // auch für den HyperFrames-Zeichner (hf/grafik.js)
   const SCHWIMMER = ['plesiosaurus', 'ichthyosaurus', 'mosasaurus', 'flugsaurier', 'trilobit', 'fisch', 'qualle'];
   const ALLE_ARTEN = Object.keys(DINOS).concat(SCHWIMMER);
   const ALIAS = { tyrannosaurus: 'trex', 't-rex': 'trex', rex: 'trex', velociraptor: 'raptor', brachiosaurus: 'langhals', brontosaurus: 'langhals', langhalssaurier: 'langhals', archaeopteryx: 'urvogel', pteranodon: 'flugsaurier', ichthyo: 'ichthyosaurus', plesio: 'plesiosaurus', mosa: 'mosasaurus', coelophysis: 'klein', eoraptor: 'klein', parasaurus: 'parasaurolophus', anky: 'ankylosaurus', stego: 'stegosaurus', trice: 'triceratops' };
@@ -527,6 +528,7 @@
     kreide: [[-0.45, 0.4, 0.26, 0.2], [-0.35, -0.28, 0.17, 0.27], [0.0, 0.5, 0.17, 0.13], [0.06, -0.08, 0.22, 0.29], [0.4, 0.45, 0.3, 0.18], [0.33, -0.2, 0.09, 0.11], [0.5, -0.56, 0.14, 0.1], [0.0, -0.86, 0.3, 0.11]],
     heute: [[-0.55, 0.38, 0.25, 0.22], [-0.4, -0.3, 0.15, 0.28], [0.0, 0.5, 0.15, 0.12], [0.08, -0.05, 0.2, 0.3], [0.42, 0.45, 0.32, 0.2], [0.36, 0.08, 0.08, 0.1], [0.6, -0.45, 0.15, 0.1], [0.0, -0.9, 0.35, 0.1]],
   };
+  BF.LAND_STUFEN = LAND; BF.EPOCHEN = EPOCHEN; // auch für den HyperFrames-Zeichner
   Z.kontinente2d = Z.urkontinent2d = function (w, t, h) {
     const F = h.F;
     const art = BF.norm(w.optWort(['art', 'als'], 'pangaea'));

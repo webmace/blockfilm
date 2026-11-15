@@ -1,0 +1,6 @@
+Twemoji-Grafiken
+Copyright 2019 Twitter, Inc and other contributors; 2024 jdecked and contributors (https://github.com/jdecked/twemoji)
+Lizenz der Grafiken: CC-BY 4.0 – https://creativecommons.org/licenses/by/4.0/
+Paket: @twemoji/svg 15.0.0 (MIT, Samuel Kopp)
+Wer Videos mit diesen Symbolen veröffentlicht, nennt die Quelle, z. B. im Abspann oder in der Beschreibung:
+"Emoji-Grafiken: Twemoji (CC-BY 4.0)".

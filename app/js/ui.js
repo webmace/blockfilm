@@ -265,11 +265,22 @@
   $('kiSelbst').onclick = () => { S.ki = null; kiAnsicht(); kt.focus(); if (kt.value.trim()) klartextUebersetzen(); };
 
   // ---------- Übersetzen ----------
+  // Zielgruppe für den Bildstil: aus dem KI-Kopf des Films, sonst die Auswahl in der App
+  function zielgruppeAusText(text) {
+    const z = String(text || '').split('\n').find(x => x.startsWith('#KI '));
+    if (z) try { const a = JSON.parse(z.slice(4)).alter; if (BF.hf.STILE[a]) return a; } catch {}
+    const a = $('kiAlter') && $('kiAlter').value;
+    return BF.hf.STILE[a] ? a : '6-9';
+  }
   function kompilieren() {
     const t0 = performance.now();
     let F;
     try {
+      BF.hf.standardAlter = zielgruppeAusText(ta.value);
+      const sprachStand = Object.assign({}, BF.sprachDauer);
       F = BF.kompiliere(ta.value);
+      S.quelle = ta.value;
+      S.sprachStand = sprachStand; // genau die Sprechdauern, mit denen F berechnet wurde (für die Komposition)
       BF.simuliere(F);
     } catch (e) {
       console.error(e);
@@ -289,6 +300,7 @@
     groesseAnpassen();
     S.zeichnen = true;
     S.vorb = vorbereiten(F);
+    hfVorschauNeu();
     if (S.modus === 'text' && kt.value.trim() && $('bericht').dataset.k !== String(S.gen)) { $('bericht').dataset.k = String(S.gen); }
     // Ton im Hintergrund berechnen (läuft der Film gerade, alten Ton anhalten; der neue setzt nahtlos an derselben Stelle ein)
     if (S.spielt) { tonStoppen(); uhrStart = performance.now(); uhrT = S.t; }
@@ -440,8 +452,35 @@
     anzeigeB = Math.max(160, Math.min(S.F.breite, Math.round(b * q)));
     anzeigeH = Math.round(anzeigeB / fa);
     S.zeichnen = true;
+    hfLage();
   }
   window.addEventListener('resize', groesseAnpassen);
+
+  // ---------- Vorschau im neuen Bildstil: die HyperFrames-Komposition läuft in einem iframe über dem Bild ----------
+  const hfRahmen = $('hfVorschau');
+  let hfBereit = false, hfTimer = null, hfGroesse = [1280, 720];
+  try { const v = localStorage.getItem('bf_neuerStil'); if (v !== null) $('neuerStil').checked = v === '1'; } catch {}
+  $('neuerStil').addEventListener('change', () => { try { localStorage.setItem('bf_neuerStil', $('neuerStil').checked ? '1' : '0'); } catch {} hfVorschauNeu(); });
+  function hfVorschauNeu() {
+    clearTimeout(hfTimer);
+    hfTimer = setTimeout(() => {
+      const F = S.F;
+      if (!F || !$('neuerStil').checked || !BF.hf.passt(F)) { hfRahmen.hidden = true; hfBereit = false; S.zeichnen = true; return; }
+      const B = 1280, H = Math.round(B * F.hoehe / F.breite / 2) * 2;
+      hfGroesse = [B, H];
+      hfRahmen.onload = () => { hfBereit = true; hfLage(); S.zeichnen = true; };
+      hfRahmen.srcdoc = BF.hf.komponiere(F, { skript: S.quelle, sprachDauer: S.sprachStand, alter: BF.hf.standardAlter, breite: B, hoehe: H, vorschau: true, ton: null });
+      hfRahmen.hidden = false;
+      hfLage();
+    }, 300);
+  }
+  function hfLage() {
+    if (hfRahmen.hidden) return;
+    const b = $('buehne').getBoundingClientRect(), a = ausgabe.getBoundingClientRect();
+    hfRahmen.style.left = (a.left - b.left) + 'px'; hfRahmen.style.top = (a.top - b.top) + 'px';
+    hfRahmen.style.width = hfGroesse[0] + 'px'; hfRahmen.style.height = hfGroesse[1] + 'px';
+    hfRahmen.style.transform = `scale(${a.width / hfGroesse[0]})`;
+  }
   // ---------- Vollbild ----------
   function vollbild() {
     if (document.fullscreenElement) document.exitFullscreen();
@@ -669,7 +708,8 @@
     videoAbgleich();
     if (!S.zeichnen) return;
     S.zeichnen = false;
-    try { szene.zeichne(S.t, anzeigeB, anzeigeH); } catch (e) { console.error(e); status('Fehler beim Zeichnen: ' + e.message); }
+    if (hfBereit && !hfRahmen.hidden) { try { hfRahmen.contentWindow.__bfZeige(S.t); } catch (e) { console.error(e); } }
+    else try { szene.zeichne(S.t, anzeigeB, anzeigeH); } catch (e) { console.error(e); status('Fehler beim Zeichnen: ' + e.message); }
     regler.value = Math.round((S.t / S.F.dauer) * 1000);
     $('zeitText').textContent = fmt(S.t) + ' / ' + fmt(S.F.dauer);
     $('laden').hidden = true;
@@ -985,6 +1025,7 @@
       const buf = await BF.renderTon(F);
       await post('/api/video/ton', BF.wav(buf));
     }
+    if (BF.hf && BF.hf.passt(F) && !o.alteEngine) return exportierenHF(o, F, w, h, fps, mitTon, zeige);
     zeige(0, 'Starte …');
     await szene.bereit();
     const start = await post('/api/video/start', { breite: w, hoehe: h, fps, name: F.titel, ton: mitTon, aus: o.aus || null });
@@ -1020,6 +1061,33 @@
     status('Video gespeichert: ' + erg.datei);
     void start;
     return erg;
+  }
+
+  // Export über HyperFrames: Komposition bauen, Server rendert mit @hyperframes/producer
+  async function exportierenHF(o, F, w, h, fps, mitTon, zeige) {
+    zeige(0, 'Baue Komposition (neuer Bildstil) …');
+    const html = BF.hf.komponiere(F, { skript: S.quelle, sprachDauer: S.sprachStand, alter: BF.hf.standardAlter, breite: w, hoehe: h, ton: mitTon ? 'ton.wav' : null });
+    const start = await post('/api/hf/start', { html, fps, name: F.titel, ton: mitTon, aus: o.aus || null });
+    if (!start.ok) { S.export = false; groesseAnpassen(); throw new Error(start.fehler); }
+    let st;
+    for (;;) {
+      await new Promise(r => setTimeout(r, 700));
+      if (S.abbruch) await post('/api/hf/abbrechen', {});
+      try { st = await api('/api/hf/status'); } catch { continue; }
+      if (st.fertig) break;
+      zeige(st.anteil || 0, st.text + ` (${w}×${h}, ${fps} fps)`);
+    }
+    S.export = false;
+    groesseAnpassen();
+    if (!st.ok && st.fehler === 'abgebrochen') { zeige(0, 'Abgebrochen.'); $('exportStart').hidden = false; $('exportLauf').hidden = true; return { ok: false, fehler: 'abgebrochen' }; }
+    if (!st.ok) throw new Error(st.fehler);
+    zeige(1, 'Fertig');
+    $('exportLauf').hidden = true; $('exportFertig').hidden = false;
+    $('ex-ergebnis').textContent = `${st.datei} (${(st.groesse / 1048576).toFixed(1)} MB)`;
+    $('ex-ordnerAuf').onclick = () => post('/api/oeffnen', { pfad: st.datei.replace(/\/[^/]*$/, '') });
+    $('ex-abspielen').onclick = () => post('/api/oeffnen', { pfad: st.datei });
+    status('Video gespeichert: ' + st.datei);
+    return { ok: true, datei: st.datei, groesse: st.groesse };
   }
 
   // ---------- Start ----------
