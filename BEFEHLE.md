@@ -188,6 +188,8 @@ Jede Szene beginnt mit einem passenden `hintergrund`. Am Ende eines Kapitels all
 
 ### Maskottchen Glib
 `maskottchen2d glib bei -30 -11 groesse 7` – unser Maskottchen: ein kleiner bunter Schleim. Er wackelt, blinzelt, schaut zum Neuesten im Bild, bewegt den Mund, wenn gesprochen wird, und hüpft bei `bewege2d glib zu …`. Mit `schweben` schwebt er (z. B. im Weltraum oder unter Wasser). Ohne eigenes `maskottchen2d` erzählt Glib den Film: er steht in jedem Kapitel in einer freien unteren Ecke und spricht mit; `maskottchen aus` schaltet das ab.
+Glib passt sich der Umgebung an: unter Wasser (`meer`) fährt er U-Boot, im Weltraum trägt er einen Helm, im Schnee Mütze und Schal, in der Wüste Sonnenhut und Brille, in der Urzeit einen Forscherhut, unter dem Mikroskop sitzt er in einer Blase. Als Erzähler läuft er zwischen den Sätzen herum und hüpft bei Ausrufen.
+Menschenfiguren (`kind2d`), die nichts tun und im Text nicht vorkommen, werden weggelassen (`menschen bleiben` schaltet das ab).
 Dinge, die es nur einmal gibt (Mond, Sonne, Erde, Mars …), stehen nie doppelt im Bild: kommt ein neuer Mond dazu, verschwindet der alte.
 
 ### Tiere

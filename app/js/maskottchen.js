@@ -12,7 +12,7 @@
     const { w2d, nameOder, punkt, neuesObjekt } = H();
     const F = h.F;
     w2d(F);
-    const gr = w.optZahl(['groesse'], 7);
+    const gr = w.optZahl(['groesse'], 9);
     w.optWort(['farbe']); // Farbe gibt es nicht: Glib ist immer bunt
     const schweben = w.flag(['schweben', 'schwebt', 'fliegt']);
     const name = nameOder(w, 'glib');
@@ -73,16 +73,27 @@
         const hier = belegung(F, seite * 42, y, s.t0, s.t1), dort = belegung(F, -seite * 42, y, s.t0, s.t1);
         if (hier > dort + 8) { seite = -seite; wechsel.push([s.t0 - 0.5, seite]); }
       }
-      let akt = startSeite;
-      const o = neuesObjekt(F, { typ: 'schleim', name: 'glib_erzaehler' + ki, t0: start, p: [akt * 58, y], r: 5.5, schweben, auto: true });
-      o.segs.push({ typ: 'zu', t0: start, t1: start + 0.9, von: [akt * 58, y], zu: [akt * 42, y] });
-      for (const [t, neu] of wechsel) {
-        if (t < start + 1.2 || t > ende - 1.5) continue;
-        o.segs.push({ typ: 'zu', t0: t, t1: t + 0.45, von: [akt * 42, y], zu: [akt * 58, y] });
-        o.segs.push({ typ: 'zu', t0: t + 0.45, t1: t + 0.9, von: [neu * 58, y], zu: [neu * 42, y] });
-        akt = neu;
+      const o = neuesObjekt(F, { typ: 'schleim', name: 'glib_erzaehler' + ki, t0: start, p: [startSeite * 60, y], r: 8, schweben, auto: true });
+      // Ablauf in zeitlicher Reihenfolge: hereinhüpfen, zwischen Sätzen herumlaufen, bei Bedarf Ecke wechseln, hinaushüpfen
+      const ereignisse = wechsel.filter(([t]) => t >= start + 1.2 && t <= ende - 1.5).map(([t, neu]) => ({ t, neu }));
+      saetze.slice(1).forEach((s2, i) => { if (i % 2 === 1) ereignisse.push({ t: s2.t0 - 0.05, laufen: true }); });
+      ereignisse.sort((a2, b2) => a2.t - b2.t);
+      let seiteJetzt = startSeite, x = startSeite * 41, frei = start + 0.9, schritt = 0;
+      o.segs.push({ typ: 'zu', t0: start, t1: frei, von: [startSeite * 60, y], zu: [x, y] });
+      for (const e of ereignisse) {
+        if (e.t < frei + 0.3 || e.t > ende - 1.6) continue;
+        if (e.neu) { // Ecke belegt: hinaus und auf der anderen Seite herein
+          o.segs.push({ typ: 'zu', t0: e.t, t1: e.t + 0.45, von: [x, y], zu: [seiteJetzt * 60, y] });
+          seiteJetzt = e.neu; x = seiteJetzt * 41;
+          o.segs.push({ typ: 'zu', t0: e.t + 0.45, t1: e.t + 0.9, von: [seiteJetzt * 60, y], zu: [x, y] });
+          frei = e.t + 0.9;
+        } else { // ein Stück Richtung Mitte und wieder zurück
+          const ziel = seiteJetzt * (schritt++ % 2 === 0 ? 33 : 42);
+          o.segs.push({ typ: 'zu', t0: e.t, t1: e.t + 1.1, von: [x, y], zu: [ziel, y] });
+          x = ziel; frei = e.t + 1.1;
+        }
       }
-      o.segs.push({ typ: 'zu', t0: ende - 0.8, t1: ende, von: [akt * 42, y], zu: [akt * 58, y] });
+      o.segs.push({ typ: 'zu', t0: Math.max(frei, ende - 0.8), t1: Math.max(frei, ende - 0.8) + 0.8, von: [x, y], zu: [seiteJetzt * 60, y] });
       o.t1 = ende + 0.05;
       if (erster) { // beim ersten Auftritt kurz ein Namensschild
         w2d(F).texte.push({ t0: start + 1, t1: start + 4, text: BF.MASKOTTCHEN_NAME, an: { obj: o.name } });
@@ -91,14 +102,29 @@
     });
   });
 
+  // Menschenfiguren ohne Aufgabe im Video weglassen: Sie bleiben nur, wenn sie etwas tun (laufen, kippen, niesen,
+  // vom Licht getroffen), ein Namensschild haben oder im gesprochenen Text vorkommen.
+  const MENSCH_WORTE = /\b(kind|kinder|kindes|mensch|menschen|oma|opa|mama|papa|eltern|junge|jungen|mädchen|maedchen|frau|mann|leute|person|freund\w*|forscher\w*|paläontolog\w*|palaeontolog\w*|ärzt\w*|arzt|telefonier\w*|niest\w*|hatschi)\b/i;
+  BF.nachKompilieren.push(function menschenAufraeumen(F) {
+    if (!F.w2d || F.menschenBleiben) return;
+    for (const o of F.w2d.liste) {
+      if (o.typ !== 'kind') continue;
+      const ende = Math.min(o.t1 ?? F.dauer, F.dauer);
+      const tut = o.segs.length || o.kipp || (F.w2d.niesen || []).some(n => n.wer === o.name) || (F.w2d.licht || []).some(l => l.ziel === o.name) || F.w2d.texte.some(t => t.an && t.an.obj === o.name);
+      const genannt = (F.sprache || []).some(s => s.t0 < ende && s.t1 > o.t0 && MENSCH_WORTE.test(s.text));
+      if (!tut && !genannt) o.t1 = o.t0; // nie sichtbar
+    }
+  });
+  Z.menschen = function (w, t, h) { if (w.flag(['bleiben', 'an', 'lassen'])) h.F.menschenBleiben = true; return 0; };
+
   // Mia (die frühere Begleitfigur) ist jetzt Glib
   const altKind = Z.kind2d;
   Z.kind2d = Z.mensch2d = function (w, t, h) {
-    if (w.pk && w.pk() === 'mia') {
+    if (w.pk && /^mia\d*$/.test(w.pk() || '')) {
       // gleich hoch wie ein Kind wäre ein Schleim viel zu breit: kleiner machen
       const d = Z.maskottchen2d(w, t, h);
       const W = h.F.w2d, o = W.liste[W.liste.length - 1];
-      if (o && o.typ === 'schleim') o.r = Math.round(o.r * 0.6 * 10) / 10;
+      if (o && o.typ === 'schleim') o.r = Math.round(o.r * 0.75 * 10) / 10;
       return d;
     }
     return altKind(w, t, h);

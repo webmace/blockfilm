@@ -238,13 +238,16 @@
     const P = stil.palette, a = P.pink, b = P.lila, c = P.tuerkis;
     const bl = [[-0.28, -0.22, 0.07, P.gelb], [0.25, -0.3, 0.05, P.weiss], [0.05, -0.12, 0.045, P.gelb], [-0.12, -0.66, 0.035, P.weiss], [0.32, -0.12, 0.06, P.orange], [-0.36, -0.42, 0.04, P.tuerkis]];
     return {
-      k: 1.05,
+      k: 1.3,
       svg: `<defs>
 <linearGradient id="${id}g" x1="0" y1="-0.85" x2="0" y2="0.05" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="${hell(a, 0.05)}"/><stop offset="0.5" stop-color="${b}"/><stop offset="1" stop-color="${c}"/></linearGradient>
 <radialGradient id="${id}r" cx="-0.18" cy="-0.55" r="0.95" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#ffffff" stop-opacity="0.45"/><stop offset="0.45" stop-color="#ffffff" stop-opacity="0"/><stop offset="0.8" stop-color="${dunkel(b, 0.3)}" stop-opacity="0.15"/><stop offset="1" stop-color="${dunkel(b, 0.35)}" stop-opacity="0.55"/></radialGradient>
 <clipPath id="${id}c"><path d="${SCHLEIM_FORM}"/></clipPath></defs>
 <ellipse class="bodenschatten" cx="0" cy="0.03" rx="0.6" ry="0.07" fill="rgba(0,0,0,0.2)"/>
-<g class="huepf"><g class="wackel">
+<g class="huepf">
+<g class="aus aus-uboot" style="display:none"><g class="schraube" transform="translate(-1.02 -0.3)"><ellipse rx="0.05" ry="0.2" fill="${P.grau}"/><ellipse rx="0.2" ry="0.05" fill="${dunkel(P.grau, 0.1)}"/></g><path d="M-0.95 -0.3 L-1.0 -0.3" stroke="${P.grau}" stroke-width="0.06"/><rect x="0.25" y="-1.25" width="0.06" height="0.42" fill="${dunkel(P.gelb, 0.15)}"/><rect x="0.25" y="-1.27" width="0.18" height="0.07" rx="0.03" fill="${dunkel(P.gelb, 0.15)}"/></g>
+<g class="aus aus-helm aus-blase" style="display:none"><circle cx="0" cy="-0.42" r="0.72" fill="${rgba(P.tuerkis, 0.1)}"/></g>
+<g class="wackel">
 <path d="${SCHLEIM_FORM}" fill="url(#${id}g)"/>
 <g clip-path="url(#${id}c)"><g class="blasen">${bl.map(([x, y, r, f]) => `<circle cx="${x}" cy="${y}" r="${r}" fill="${f}" opacity="0.75"/><circle cx="${f3(x - r * 0.3)}" cy="${f3(y - r * 0.3)}" r="${f3(r * 0.35)}" fill="#fff" opacity="0.7"/>`).join('')}</g>
 <g class="tiefe"><path d="${SCHLEIM_FORM}" fill="url(#${id}r)"/><path d="M-0.5 -0.05 C-0.3 0.02 0.3 0.02 0.5 -0.05 L0.6 0.1 L-0.6 0.1 Z" fill="${rgba(dunkel(c, 0.25), 0.45)}"/></g></g>
@@ -254,20 +257,40 @@
 ${[-1, 1].map(sg => `<g class="auge" transform="translate(${f3(sg * 0.17)} -0.47)"><ellipse rx="0.125" ry="0.14" fill="#fff"/><g class="pupille"><circle r="0.07" fill="${P.schwarz}"/><circle cx="0.025" cy="-0.03" r="0.024" fill="#fff"/></g></g>`).join('')}
 ${[-1, 1].map(sg => `<ellipse cx="${f3(sg * 0.33)}" cy="-0.3" rx="0.07" ry="0.04" fill="${rgba(P.rot, 0.35)}"/>`).join('')}
 <g class="mund" transform="translate(0 -0.28)"><ellipse class="mo" rx="0.08" ry="0.03" fill="${dunkel(P.rot, 0.35)}"/><ellipse class="zunge" cy="0.015" rx="0.045" ry="0.012" fill="${P.pink}"/></g>
-</g></g></g>`,
+<g class="aus aus-muetze" style="display:none"><path d="M-0.3 -0.72 Q0 -1.08 0.3 -0.72 Z" fill="${P.rot}"/><rect x="-0.33" y="-0.76" width="0.66" height="0.09" rx="0.045" fill="#fff"/><circle cx="0" cy="-0.98" r="0.075" fill="#fff"/><path d="M-0.4 -0.18 Q0 -0.06 0.4 -0.18 L0.38 -0.1 Q0 0.02 -0.38 -0.1 Z" fill="${P.rot}"/><rect x="0.2" y="-0.16" width="0.09" height="0.26" rx="0.03" fill="${P.rot}" transform="rotate(-10 0.24 -0.12)"/></g>
+<g class="aus aus-hut" style="display:none"><ellipse cx="0" cy="-0.79" rx="0.5" ry="0.08" fill="${mische(P.gelb, P.braun, 0.35)}"/><path d="M-0.26 -0.8 Q-0.24 -1.06 0 -1.06 Q0.24 -1.06 0.26 -0.8 Z" fill="${mische(P.gelb, P.braun, 0.25)}"/><rect x="-0.25" y="-0.86" width="0.5" height="0.06" fill="${P.rot}"/><g transform="translate(0 -0.47)"><rect x="-0.32" y="-0.07" width="0.26" height="0.15" rx="0.06" fill="${P.schwarz}"/><rect x="0.06" y="-0.07" width="0.26" height="0.15" rx="0.06" fill="${P.schwarz}"/><rect x="-0.07" y="-0.03" width="0.14" height="0.03" fill="${P.schwarz}"/></g></g>
+<g class="aus aus-forscher" style="display:none"><ellipse cx="0" cy="-0.8" rx="0.46" ry="0.07" fill="${mische(P.braun, P.gelb, 0.45)}"/><path d="M-0.27 -0.81 Q-0.27 -1.05 0 -1.06 Q0.27 -1.05 0.27 -0.81 Z" fill="${mische(P.braun, P.gelb, 0.55)}"/><rect x="-0.27" y="-0.87" width="0.54" height="0.05" fill="${dunkel(P.braun, 0.1)}"/></g>
+</g>
+<g class="aus aus-uboot" style="display:none"><path d="M-0.95 -0.3 Q-0.95 0.1 -0.3 0.12 L0.55 0.12 Q1.05 0.1 1.05 -0.28 Q1.0 -0.62 0.55 -0.62 L0.42 -0.62 Q0.3 -0.98 0 -0.98 Q-0.3 -0.98 -0.42 -0.62 L-0.6 -0.62 Q-0.95 -0.62 -0.95 -0.3 Z M-0.4 -0.42 A0.4 0.4 0 1 0 0.4 -0.42 A0.4 0.4 0 1 0 -0.4 -0.42 Z" fill-rule="evenodd" fill="${P.gelb}"/><circle cx="0" cy="-0.42" r="0.4" fill="none" stroke="${dunkel(P.gelb, 0.15)}" stroke-width="0.06"/><circle cx="0" cy="-0.42" r="0.4" fill="${rgba(P.tuerkis, 0.18)}"/><path d="M-0.95 -0.12 Q0 0.2 1.0 -0.12 L1.02 -0.06 Q0 0.26 -0.95 -0.06 Z" fill="${dunkel(P.gelb, 0.15)}"/>${[0.62, 0.82].map(x => `<circle cx="${x}" cy="-0.3" r="0.07" fill="${P.tuerkis}" stroke="${dunkel(P.gelb, 0.15)}" stroke-width="0.025"/>`).join('')}<path d="M-0.28 -0.7 Q-0.18 -0.78 -0.08 -0.76" stroke="#fff" stroke-opacity="0.7" stroke-width="0.04" stroke-linecap="round" fill="none"/></g>
+<g class="aus aus-helm" style="display:none"><circle cx="0" cy="-0.42" r="0.72" fill="none" stroke="${rgba('#ffffff', 0.85)}" stroke-width="0.04"/><path d="M-0.42 -0.88 Q-0.2 -1.06 0.12 -1.06" stroke="#fff" stroke-opacity="0.8" stroke-width="0.07" stroke-linecap="round" fill="none"/><rect x="-0.5" y="0.02" width="1" height="0.12" rx="0.06" fill="${P.grau}"/><line x1="0.4" y1="-0.98" x2="0.52" y2="-1.2" stroke="${P.grau}" stroke-width="0.03"/><circle class="antenne" cx="0.53" cy="-1.22" r="0.045" fill="${P.rot}"/></g>
+<g class="aus aus-blase" style="display:none"><circle cx="0" cy="-0.42" r="0.72" fill="none" stroke="${rgba('#ffffff', 0.7)}" stroke-width="0.025"/><ellipse cx="-0.35" cy="-0.82" rx="0.14" ry="0.07" transform="rotate(-35 -0.35 -0.82)" fill="#fff" opacity="0.6"/></g>
+</g></g>`,
     };
   };
+  // Ausrüstung je nach Umgebung (Hintergrund)
+  const AUSRUESTUNG = { meer: 'uboot', weltraum: 'helm', all: 'helm', space: 'helm', schnee: 'muetze', eiszeit: 'muetze', wueste: 'hut', urzeit: 'forscher', trias: 'forscher', jura: 'forscher', kreide: 'forscher', mikro: 'blase' };
   BW.schleim = (el, o, t, F, q, I) => {
     const c = el._bf || (el._bf = {
       h: el.querySelector('.huepf'), w: el.querySelector('.wackel'), bl: el.querySelector('.blasen'), tiefe: el.querySelector('.tiefe'), glanz: el.querySelector('.glanz'),
       augen: [...el.querySelectorAll('.auge')], pup: [...el.querySelectorAll('.pupille')], mo: el.querySelector('.mo'), zunge: el.querySelector('.zunge'), schatten: el.querySelector('.bodenschatten'),
     });
     const K = o.auto ? { x: 0, y: 0, z: 1 } : I.kamera(F, t); // der Erzähler steht fest im Bild
+    let hgArt = 'weltraum'; for (const b of F.w2d.hg) if (b.t0 <= t) hgArt = b.art;
+    const aus = AUSRUESTUNG[hgArt] || '';
+    if (el._aus !== aus) { el._aus = aus; el.querySelectorAll('.aus').forEach(g => { g.style.display = aus && g.classList.contains('aus-' + aus) ? '' : 'none'; }); }
+    if (aus === 'uboot') { const sr = el._schraube || (el._schraube = el.querySelector('.schraube')); sr.setAttribute('transform', `translate(-1.02 -0.3) scale(1 ${f3(Math.cos(t * 14))})`); }
     // Hüpfen beim Laufen, sonst sanft schweben oder wackeln
     let hy = 0, quetsch = Math.sin(t * 2.2 + o.r) * 0.035;
     const seg = (o.segs || []).find(s => s.typ === 'zu' && t >= s.t0 && t < s.t1);
     if (seg) { const ph = Math.abs(Math.sin((t - seg.t0) * 9)); hy = -ph * 0.22; quetsch = (1 - ph) * 0.12 - 0.04; }
-    else if (o.schweben) hy = -0.12 + Math.sin(t * 1.8 + o.r) * 0.05;
+    else if (o.schweben || aus === 'uboot' || aus === 'helm') hy = -0.12 + Math.sin(t * 1.8 + o.r) * 0.05;
+    else {
+      // im Stehen ab und zu ein kleiner Hopser, bei Sätzen mit "!" ein Freudensprung
+      const ph = (t + o.r * 0.7) % 4.2;
+      if (ph < 0.45) { const u = Math.sin(ph / 0.45 * Math.PI); hy = -u * 0.12; quetsch = -u * 0.05; }
+      const ruf = (F.sprache || []).find(s => t >= s.t0 && t < s.t0 + 0.7 && /!/.test(s.text));
+      if (ruf) { const u = Math.sin((t - ruf.t0) / 0.7 * Math.PI); hy = Math.min(hy, -u * 0.3); quetsch = -u * 0.08; }
+    }
     c.h.setAttribute('transform', `translate(0 ${f3(hy)})`);
     c.w.setAttribute('transform', `scale(${f3(1 + quetsch)} ${f3(1 - quetsch)})`);
     c.schatten.setAttribute('rx', f3(0.6 * (1 + hy * 0.8)));
