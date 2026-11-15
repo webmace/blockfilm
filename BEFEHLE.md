@@ -213,7 +213,9 @@ Dinge, die es nur einmal gibt (Mond, Sonne, Erde, Mars …), stehen nie doppelt 
 | `kaktus2d` / `pinguin2d` | `kaktus2d k1 bei 18 -11 groesse 9` · `pinguin2d p1 bei 14 -11 groesse 7` |
 | `thermometer2d` | `thermometer2d t bei 18 -3 groesse 14 wert 25` · `temperatur2d t auf 39 in 3` |
 | `stern2d` / `planet2d` | `stern2d sonne bei -40 14 groesse 6 farbe gelb` · `planet2d erde bei 18 0 groesse 9 art erde` (mond, mars, jupiter, venus, eis) |
-| `licht2d` | `licht2d von sonne zu baum anzahl 5 faecher 4` (Lichtstrahlen) |
+| `licht2d` | `licht2d von sonne zu baum anzahl 5 faecher 4` (Lichtstrahlen; „zu“ einem Objekt: die Strahlen enden dort und leuchten auf. Weißes Licht wird in Glas und Wasser gebrochen und fächert sich in Regenbogenfarben auf, an schwarzen Löchern biegt es sich) |
+| `prisma2d` | `prisma2d prisma bei 0 2 groesse 10` – Glas-Prisma: `licht2d von sonne zu prisma anzahl 3 faecher 1` zeigt, wie weißes Licht in Farben zerfällt |
+| `tropfen2d` | `tropfen2d tropfen bei 10 2 groesse 8` – großer Wassertropfen: Licht geht hinein, wird hinten gespiegelt und kommt als Regenbogen-Fächer zurück |
 | `luft2d` / `atome2d` | `luft2d luft bei 10 8 breite 40 hoehe 22 anzahl 50` (Luftteilchen) · `atome2d a bei 6 -2 spalten 4 zeilen 6 groesse 0.8 farbe orange` |
 | `wand2d` / `geist2d` | `wand2d wand bei 6 -11 hoehe 24 breite 5` (mit `fenster` aus Glas) · `geist2d geist bei -36 2 groesse 6` |
 | `vulkan2d` | `vulkan2d v bei -26 -11 groesse 18` · `ausbruch2d v in 6` |

@@ -49,6 +49,7 @@ So arbeitest du:
   * Beschrifte Teile von Objekten mit text2d … an objekt … stelle oben/unten/links/rechts statt mit geschätzten zeiger-Positionen. Bei kippe2d gilt: positive Zahl = gegen den Uhrzeigersinn (auf 90 → Kopf links, Füße rechts).
   * Jedes Kapitel beginnt mit einem passenden hintergrund (z. B. erde, zimmer, meer, weltraum, tafel) und endet damit, dass alle Objekte des Kapitels mit verstecke2d ausgeblendet werden.
   * Auf dem Boden stehende Dinge bei y = -11, nichts Wichtiges unter y = -20 (dort stehen die Untertitel). Objekte nicht übereinander stapeln, lieber nebeneinander von x -40 bis 40.
+  * Licht: licht2d rechnet echte Optik. Für Regenbogen und Lichtbrechung benutze prisma2d oder tropfen2d und licht2d von sonne zu prisma/tropfen – die Farben entstehen von selbst, male sie nicht mit Formen nach.
   * Bewegung macht Filme lebendig: bewege2d, kippe2d, kamera2d (Heranzoomen), wachsen2d, faerbe2d.
   * Der Film wird im flachen, bunten Erklärvideo-Stil gezeichnet (wie bei Kurzgesagt): Bevorzuge gezeichnete Objekte (kind2d, stern2d, planet2d, wolke2d, apfel2d, form2d, zahl2d …) vor symbol2d-Bildzeichen und nutze für Zeit- oder Ortsangaben ein Band oben links mit text "Vor 6 Millionen Jahren" oben fuer 3. Jedes Kapitel bekommt eine Kapitelkarte mit kapitel "…".
   * Prüfe am Ende jeden Sprecher-Satz einmal: Was sieht das Kind in diesem Moment? Wenn das Bild leer ist oder nicht passt, ergänze ein Objekt oder symbol2d.

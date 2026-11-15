@@ -122,8 +122,11 @@
     const anzahl = Math.round(w.optZahl(['anzahl'], 1));
     const abstand = w.optZahl(['abstand'], 3);
     const faecher = w.optZahl(['faecher', 'streuung'], 0);
-    const f = farbe(h, w.optWort(['farbe']), '#ffe98a');
+    const fw = w.optWort(['farbe']);
+    const f = farbe(h, fw, '#ffe98a');
+    const weiss = !fw || ['weiss', 'weiß', 'white', 'gelb'].includes(BF.norm(fw)); // weißes (Sonnen-)Licht fächert sich in Glas auf
     let richtung = w.optZahl(['richtung', 'winkel'], null);
+    let zielName = null;
     const vi = w.finde(['von']); if (vi >= 0) w.t.splice(vi, 1);
     let start;
     if (w.pk() && W.obj[w.pk()]) start = W.obj[w.wort()].p.slice(); else start = [w.zahl(), w.zahl()];
@@ -131,7 +134,7 @@
     if (zi >= 0) {
       w.t.splice(zi, 1);
       let ziel;
-      if (w.pk() && W.obj[w.pk()]) ziel = W.obj[w.wort()].p; else ziel = [w.zahl(), w.zahl()];
+      if (w.pk() && W.obj[w.pk()]) { zielName = w.pk(); ziel = W.obj[w.wort()].p; } else ziel = [w.zahl(), w.zahl()];
       richtung = Math.atan2(ziel[1] - start[1], ziel[0] - start[0]) * 180 / Math.PI;
     }
     if (richtung === null) richtung = 0;
@@ -139,9 +142,24 @@
       const k = anzahl > 1 ? i / (anzahl - 1) - 0.5 : 0;
       const a = (richtung + k * faecher * 2) * Math.PI / 180;
       const off = faecher ? 0 : k * (anzahl - 1) * abstand;
-      W.licht.push({ t0: t + (faecher ? 0 : Math.abs(k) * 0.15), x: start[0] - Math.sin(a) * off, y: start[1] + Math.cos(a) * off, a, farbe: f });
+      W.licht.push({ t0: t + (faecher ? 0 : Math.abs(k) * 0.15), x: start[0] - Math.sin(a) * off, y: start[1] + Math.cos(a) * off, a, farbe: f, weiss, ziel: zielName });
     }
     h.ton(t, 'magie');
+    return 0;
+  };
+  // Glas-Prisma und großer Wassertropfen: Licht wird darin gebrochen (weißes Licht fächert sich in Farben auf)
+  Z.prisma2d = function (w, t, h) {
+    const F = h.F;
+    const name = !w.istZahl() && w.pk() && !['bei', 'auf'].includes(w.pk()) ? w.wort() : 'prisma';
+    const r = w.optZahl(['groesse'], 8);
+    neuesObjekt(F, { typ: 'prisma', name, t0: t, p: punkt(w), r });
+    return 0;
+  };
+  Z.tropfen2d = Z.wassertropfen2d = function (w, t, h) {
+    const F = h.F;
+    const name = !w.istZahl() && w.pk() && !['bei', 'auf'].includes(w.pk()) ? w.wort() : 'tropfen';
+    const r = w.optZahl(['groesse'], 6);
+    neuesObjekt(F, { typ: 'tropfen', name, t0: t, p: punkt(w), r });
     return 0;
   };
   Z.auge2d = Z.beobachter = function (w, t, h) {
@@ -669,36 +687,135 @@
     return F.w2d.liste.filter(o => o.typ === 'loch' && t >= o.t0 && t < o.t1);
   }
   // Bahn eines Lichtstrahls (einmal berechnet, mit allen schwarzen Löchern, die zu dem Zeitpunkt da sind)
+  // ---------- Lichtstrahlen mit Optik ----------
+  // Licht biegt sich an schwarzen Löchern, stoppt an Planeten, Geräten, Wänden und am Ziel ("licht2d … zu baum"),
+  // wird in Glas und Wasser gebrochen (Prisma, Regentropfen) und weißes Licht fächert sich dabei in Regenbogenfarben auf.
+  const SPEKTRUM = ['#ff3b3b', '#ff9a1f', '#ffe23a', '#2bd96b', '#2f7bff', '#8a4dff'];
+  BF.LICHT_SPEKTRUM = SPEKTRUM;
+  const AM_BODEN = ['kind', 'schleim', 'baum', 'pflanze', 'kaktus', 'pinguin', 'wand', 'mast', 'vulkan', 'koerper', 'dino'];
+  function optikKoerper(F, t) {
+    const out = [];
+    for (const o of F.w2d.liste) {
+      if (!(t + 0.01 >= o.t0 && t < o.t1)) continue;
+      const p = pos(F, o, t);
+      if (o.typ === 'prisma' || (o.typ === 'form' && o.art === 'dreieck' && /prisma|glas/i.test(o.name))) {
+        const v = [[0, 1.1], [1.15, -0.9], [-1.15, -0.9]].map(([u, w]) => [p[0] + u * o.r, p[1] + w * o.r]);
+        out.push({ art: 'prisma', o, v, mx: p[0], my: p[1] - 0.23 * o.r, n: [1.24, 1.4] });
+      } else if (o.typ === 'tropfen' || (o.typ === 'form' && ['kreis', 'kugel'].includes(o.art) && /tropfen|glas|linse|wasser/i.test(o.name)) || (o.typ === 'zahl' && o.ohneRand && /\u{1F4A7}/u.test(o.text))) {
+        const emoji = o.typ === 'zahl';
+        out.push({ art: 'tropfen', o, cx: p[0], cy: emoji ? p[1] - o.r * 0.12 : p[1], r: emoji ? o.r * 0.5 : o.r, n: [1.28, 1.42] });
+      }
+    }
+    return out;
+  }
+  function drin(K, x, y) {
+    if (K.art === 'tropfen') return Math.hypot(x - K.cx, y - K.cy) < K.r;
+    const [a, b, c] = K.v, s1 = (b[0] - a[0]) * (y - a[1]) - (b[1] - a[1]) * (x - a[0]), s2 = (c[0] - b[0]) * (y - b[1]) - (c[1] - b[1]) * (x - b[0]), s3 = (a[0] - c[0]) * (y - c[1]) - (a[1] - c[1]) * (x - c[0]);
+    return (s1 >= 0 && s2 >= 0 && s3 >= 0) || (s1 <= 0 && s2 <= 0 && s3 <= 0);
+  }
+  function normale(K, x, y) { // nach außen zeigend
+    if (K.art === 'tropfen') { const dx = x - K.cx, dy = y - K.cy, l = Math.hypot(dx, dy) || 1; return [dx / l, dy / l]; }
+    let best = null, bd = Infinity;
+    for (let i = 0; i < 3; i++) {
+      const a = K.v[i], b = K.v[(i + 1) % 3], ex = b[0] - a[0], ey = b[1] - a[1], l2 = ex * ex + ey * ey;
+      const u = clamp(((x - a[0]) * ex + (y - a[1]) * ey) / l2, 0, 1), d = Math.hypot(x - a[0] - ex * u, y - a[1] - ey * u);
+      if (d < bd) { bd = d; let nx = -ey, ny = ex; const l = Math.hypot(nx, ny); nx /= l; ny /= l; if ((a[0] - K.mx) * nx + (a[1] - K.my) * ny < 0) { nx = -nx; ny = -ny; } best = [nx, ny]; }
+    }
+    return best;
+  }
+  // Snellius: d = Richtung, n = Normale gegen die Richtung, eta = n1/n2; bei Totalreflexion gespiegelt
+  function brechen(dx, dy, nx, ny, eta) {
+    const c = -(dx * nx + dy * ny), k = 1 - eta * eta * (1 - c * c);
+    if (k < 0) return [dx + 2 * c * nx, dy + 2 * c * ny, true];
+    const f = eta * c - Math.sqrt(k);
+    return [eta * dx + f * nx, eta * dy + f * ny, false];
+  }
+  function zielKreis(F, name, t) {
+    const o = name && F.w2d.obj[name];
+    if (!o) return null;
+    const p = pos(F, o, t);
+    if (o.typ === 'prisma' || o.typ === 'tropfen') return null;
+    if (o.typ === 'baum') return { x: p[0], y: p[1] + o.r * 0.68, r: o.r * 0.42 }; // die Krone
+    if (AM_BODEN.includes(o.typ)) return { x: p[0], y: p[1] + o.r * 0.5, r: o.r * 0.45 };
+    if (o.typ === 'zahl') return { x: p[0], y: p[1], r: o.r * 0.6 };
+    return { x: p[0], y: p[1], r: o.r * 0.9 };
+  }
   function bahn(F, s) {
-    if (s.pfad) return s.pfad;
+    if (s.pfade) return s.pfade;
     const loecher = lochAktiv(F, s.t0 + 0.01).map(o => ({ p: pos(F, o, s.t0), r: o.r }));
     const koerper = F.w2d.liste.filter(o => (o.typ === 'planet' || o.typ === 'auge' || o.typ === 'geraet') && s.t0 + 0.01 >= o.t0 && s.t0 < o.t1).map(o => ({ p: pos(F, o, s.t0), r: o.typ === 'auge' ? o.r * 1.2 : o.typ === 'geraet' ? o.r * 0.32 : o.r }));
     const waende = F.w2d.liste.filter(o => o.typ === 'wand' && !o.fenster && s.t0 + 0.01 >= o.t0 && s.t0 < o.t1).map(o => ({ p: pos(F, o, s.t0), b: o.breite, h: o.r }));
+    const optik = optikKoerper(F, s.t0);
+    // ist das Ziel selbst aus Glas oder Wasser, geht das Licht hindurch statt dort zu enden
+    const ziel = optik.some(K => K.o.name === s.ziel) ? null : zielKreis(F, s.ziel, s.t0);
     const startIn = koerper.filter(K => Math.hypot(s.x - K.p[0], s.y - K.p[1]) < K.r);
-    const pts = [s.x, s.y];
-    let x = s.x, y = s.y, vx = Math.cos(s.a) * C, vy = Math.sin(s.a) * C;
     const dt = 1 / 120;
-    let ende = 'weg';
-    for (let i = 0; i < 120 * 10; i++) {
-      for (const L of loecher) {
-        const dx = x - L.p[0], dy = y - L.p[1], r = Math.hypot(dx, dy);
-        if (r < L.r) { ende = 'gefangen'; i = 1e9; break; }
-        const a = 1.02 * L.r * C * C / (r * r);
-        vx -= a * dx / r * dt; vy -= a * dy / r * dt;
+    const pfade = [];
+    const worin = (x, y) => optik.find(K => drin(K, x, y)) || null;
+    // verfolgt einen Strahl ab Schritt "ab"; farbIdx = null: weißes Licht (wird beim ersten Glas aufgefächert)
+    function verfolge(x, y, dx, dy, farbe, farbIdx, ab, tiefe) {
+      const pts = [x, y];
+      let vx = dx * C, vy = dy * C, innen = worin(x, y), spiegel = 0, ende = 'weg', zielAbstand = Infinity;
+      for (let i = ab; i < 120 * 10; i++) {
+        let weg = false;
+        for (const L of loecher) {
+          const ex = x - L.p[0], ey = y - L.p[1], r = Math.hypot(ex, ey);
+          if (r < L.r) { ende = 'gefangen'; weg = true; break; }
+          const a = 1.02 * L.r * C * C / (r * r);
+          vx -= a * ex / r * dt; vy -= a * ey / r * dt;
+        }
+        if (weg) break;
+        let getroffen = false;
+        for (const K of koerper) if (!startIn.includes(K) && Math.hypot(x - K.p[0], y - K.p[1]) < K.r) getroffen = true;
+        for (const wd of waende) if (Math.abs(x - wd.p[0]) < wd.b / 2 && y > wd.p[1] && y < wd.p[1] + wd.h) getroffen = true;
+        if (getroffen) { ende = 'getroffen'; break; }
+        if (ziel && i > ab + 2) {
+          // am Ziel enden: hineingetroffen, oder knapp vorbei (dann an der Stelle, die dem Ziel am nächsten ist)
+          const d = Math.hypot(x - ziel.x, y - ziel.y);
+          if (d < ziel.r) { ende = 'ziel'; break; }
+          if (d > zielAbstand && zielAbstand < Math.max(ziel.r * 2.4, 7)) { pts.length -= 2; ende = 'ziel'; break; }
+          zielAbstand = Math.min(zielAbstand, d);
+        }
+        const v = Math.hypot(vx, vy); vx = vx / v * C; vy = vy / v * C;
+        let nx = x + vx * dt, ny = y + vy * dt;
+        const neu = worin(nx, ny);
+        if (neu !== innen && optik.length) {
+          // Grenze zwischen Luft und Glas/Wasser: Punkt auf der Grenze suchen (halbieren)
+          let ax = x, ay = y, bx = nx, by = ny;
+          for (let k = 0; k < 8; k++) { const mx = (ax + bx) / 2, my = (ay + by) / 2; if (worin(mx, my) === innen) { ax = mx; ay = my; } else { bx = mx; by = my; } }
+          const K = neu || innen, eintritt = !innen;
+          const [ox, oy] = normale(K, (ax + bx) / 2, (ay + by) / 2);
+          const ux = vx / C, uy = vy / C;
+          pts.push(ax, ay);
+          if (eintritt && farbIdx === null && s.weiss && tiefe < 2) {
+            // weißes Licht: hier in die Regenbogenfarben auffächern
+            pfade.push({ pts: new Float32Array(pts), ab: pfade.length ? ab : 0, farbe, ende: 'geteilt' });
+            for (let f = 0; f < SPEKTRUM.length; f++) verfolge(ax, ay, ux, uy, SPEKTRUM[f], f, i, tiefe + 1);
+            return;
+          }
+          const n = farbIdx === null ? (K.n[0] + K.n[1]) / 2 : K.n[0] + (K.n[1] - K.n[0]) * farbIdx / (SPEKTRUM.length - 1);
+          let d;
+          if (eintritt) d = brechen(ux, uy, ox, oy, 1 / n);
+          else if (K.art === 'tropfen' && spiegel === 0) { const c = ux * ox + uy * oy; d = [ux - 2 * c * ox, uy - 2 * c * oy, true]; spiegel++; } // hinten im Tropfen gespiegelt (Regenbogen-Weg)
+          else d = brechen(ux, uy, -ox, -oy, n);
+          const l = Math.hypot(d[0], d[1]) || 1;
+          vx = d[0] / l * C; vy = d[1] / l * C;
+          // ein kleiner Schritt in die neue Richtung: gebrochen über die Grenze, gespiegelt zurück ins Glas
+          x = (ax + bx) / 2 + vx / C * 0.06;
+          y = (ay + by) / 2 + vy / C * 0.06;
+          innen = worin(x, y);
+          pts.push(x, y);
+          continue;
+        }
+        x = nx; y = ny;
+        pts.push(x, y);
+        if (Math.abs(x) > 140 || Math.abs(y) > 110) break;
       }
-      if (i >= 1e9) break;
-      let getroffen = false;
-      for (const K of koerper) if (!startIn.includes(K) && Math.hypot(x - K.p[0], y - K.p[1]) < K.r) getroffen = true;
-      for (const wd of waende) if (Math.abs(x - wd.p[0]) < wd.b / 2 && y > wd.p[1] && y < wd.p[1] + wd.h) getroffen = true;
-      if (getroffen) { ende = 'getroffen'; break; }
-      const v = Math.hypot(vx, vy); vx = vx / v * C; vy = vy / v * C;
-      x += vx * dt; y += vy * dt;
-      pts.push(x, y);
-      if (Math.abs(x) > 140 || Math.abs(y) > 110) break;
+      pfade.push({ pts: new Float32Array(pts), ab, farbe, ende });
     }
-    s.ende = ende;
-    s.pfad = new Float32Array(pts);
-    return s.pfad;
+    verfolge(s.x, s.y, Math.cos(s.a), Math.sin(s.a), s.farbe, null, 0, 0);
+    s.pfade = pfade;
+    return pfade;
   }
 
   // ---------- Zeichnen ----------
@@ -948,6 +1065,12 @@
           for (let k = 0; k < 2; k++) { const a = a0 + (a1 - a0) * (0.3 + 0.4 * rr()), d = r * (0.35 + 0.35 * rr()); ctx.fillStyle = '#b8322a'; ctx.beginPath(); ctx.arc(sx + Math.cos(a) * d, sy + Math.sin(a) * d, r * 0.09, 0, 7); ctx.fill(); }
           ctx.strokeStyle = '#8a5a2a'; ctx.lineWidth = Math.max(1.5, r * 0.025); ctx.beginPath(); ctx.moveTo(sx, sy); ctx.arc(sx, sy, r, a0, a1); ctx.closePath(); ctx.stroke();
         }
+      } else if (o.typ === 'prisma') {
+        ctx.fillStyle = 'rgba(190,225,255,0.45)'; ctx.strokeStyle = 'rgba(255,255,255,0.8)'; ctx.lineWidth = Math.max(1.5, r * 0.04);
+        ctx.beginPath(); ctx.moveTo(sx, sy - r * 1.1); ctx.lineTo(sx + r * 1.15, sy + r * 0.9); ctx.lineTo(sx - r * 1.15, sy + r * 0.9); ctx.closePath(); ctx.fill(); ctx.stroke();
+      } else if (o.typ === 'tropfen') {
+        ctx.fillStyle = 'rgba(120,190,255,0.4)'; ctx.strokeStyle = 'rgba(255,255,255,0.8)'; ctx.lineWidth = Math.max(1.5, r * 0.04);
+        ctx.beginPath(); ctx.arc(sx, sy, r, 0, 7); ctx.fill(); ctx.stroke();
       } else if (BF.zeichne2d && BF.zeichne2d[o.typ]) {
         BF.zeichne2d[o.typ](ctx, o, sx, sy, r, t, s, E, F, p);
       } else if (o.typ === 'kaktus') {
@@ -999,25 +1122,32 @@
     // Lichtstrahlen
     for (const st of F.w2d.licht) {
       if (t < st.t0) continue;
-      const pf = bahn(F, st);
-      const n = pf.length / 2;
-      const k = Math.min(n - 1, Math.floor((t - st.t0) * 120));
-      if (k < 1) continue;
-      ctx.save();
-      ctx.lineCap = 'round'; ctx.lineJoin = 'round';
-      ctx.shadowColor = st.farbe; ctx.shadowBlur = 12 * E;
-      ctx.strokeStyle = BF.rgba(BF.hex(st.farbe), 1, 0.85); ctx.lineWidth = 3.2 * E;
-      const anf = 0;
       const alter = t - st.t0;
-      if (alter > 9) { ctx.restore(); continue; }
-      ctx.globalAlpha = clamp(1 - (alter - 7) / 2, 0, 1); // ältere Strahlen verschwinden
-      ctx.beginPath();
-      ctx.moveTo(X(pf[anf * 2]), Y(pf[anf * 2 + 1]));
-      for (let i = anf + 1; i <= k; i += 2) ctx.lineTo(X(pf[i * 2]), Y(pf[i * 2 + 1]));
-      ctx.lineTo(X(pf[k * 2]), Y(pf[k * 2 + 1]));
-      ctx.stroke();
-      if (k < n - 1) { ctx.fillStyle = '#ffffff'; ctx.beginPath(); ctx.arc(X(pf[k * 2]), Y(pf[k * 2 + 1]), 5 * E, 0, 7); ctx.fill(); }
-      ctx.restore();
+      if (alter > 9) continue;
+      const schritt = Math.floor(alter * 120);
+      for (const pf of bahn(F, st)) {
+        // jeder Teilstrahl (z. B. eine Regenbogenfarbe) startet erst an seinem Spaltpunkt
+        const p = pf.pts, n = p.length / 2, k = Math.min(n - 1, schritt - pf.ab);
+        if (k < 1) continue;
+        ctx.save();
+        ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+        ctx.shadowColor = pf.farbe; ctx.shadowBlur = 12 * E;
+        ctx.strokeStyle = BF.rgba(BF.hex(pf.farbe), 1, 0.9); ctx.lineWidth = 3.2 * E;
+        ctx.globalAlpha = clamp(1 - (alter - 7) / 2, 0, 1); // ältere Strahlen verschwinden
+        ctx.beginPath();
+        ctx.moveTo(X(p[0]), Y(p[1]));
+        for (let i = 1; i <= k; i++) ctx.lineTo(X(p[i * 2]), Y(p[i * 2 + 1]));
+        ctx.stroke();
+        const kx = X(p[k * 2]), ky = Y(p[k * 2 + 1]);
+        if (k < n - 1) { ctx.fillStyle = '#ffffff'; ctx.beginPath(); ctx.arc(kx, ky, 5 * E, 0, 7); ctx.fill(); }
+        else if (pf.ende === 'ziel') { // angekommen: das Ziel leuchtet auf
+          const puls = 1 + Math.sin(alter * 6) * 0.15;
+          const g = ctx.createRadialGradient(kx, ky, 0, kx, ky, 22 * E * puls);
+          g.addColorStop(0, 'rgba(255,255,255,0.95)'); g.addColorStop(0.35, BF.rgba(BF.hex(pf.farbe), 1, 0.6)); g.addColorStop(1, 'rgba(255,255,255,0)');
+          ctx.shadowBlur = 0; ctx.fillStyle = g; ctx.beginPath(); ctx.arc(kx, ky, 22 * E * puls, 0, 7); ctx.fill();
+        }
+        ctx.restore();
+      }
     }
     // Funkwellen und Daten-Päckchen
     for (const wl of F.w2d.wellen || []) {

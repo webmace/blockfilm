@@ -243,6 +243,16 @@
     c.b.setAttribute('d', `M-0.18 1 Q-0.1 ${f3(1 + L * 0.3)} 0 ${f3(1 + (L - 1) * 0.6)} Q0.1 ${f3(1 + L * 0.3)} 0.18 1 Z`);
   };
 
+  // ---------- Glas-Prisma und großer Wassertropfen (Licht wird darin gebrochen, siehe bahn() in welt2d.js) ----------
+  OB.prisma = (o, stil, id) => {
+    const glas = mische(stil.palette.tuerkis, '#ffffff', 0.55);
+    return { k: 1.3, svg: `<path d="M0 -1.1 L1.15 0.9 L-1.15 0.9 Z" fill="${rgba(glas, 0.45)}" stroke="${rgba('#ffffff', 0.85)}" stroke-width="0.05" stroke-linejoin="round"/><path d="M0 -1.1 L1.15 0.9 L0.3 0.9 Z" fill="${rgba(dunkel(glas, 0.15), 0.25)}"/><path d="M-0.18 -0.6 L-0.62 0.2" stroke="#fff" stroke-opacity="0.75" stroke-width="0.07" stroke-linecap="round"/><path d="M-0.3 0.45 L-0.42 0.66" stroke="#fff" stroke-opacity="0.6" stroke-width="0.05" stroke-linecap="round"/>` };
+  };
+  OB.tropfen = (o, stil, id) => {
+    const w = mische(stil.palette.blau, '#ffffff', 0.45);
+    return { k: 1.1, svg: `<circle r="1" fill="${rgba(w, 0.4)}" stroke="${rgba('#ffffff', 0.85)}" stroke-width="0.04"/><path d="M0.95 0.3 A1 1 0 0 1 -0.95 0.3 A1.2 0.7 0 0 0 0.95 0.3 Z" fill="${rgba(dunkel(w, 0.2), 0.25)}"/><ellipse cx="-0.42" cy="-0.45" rx="0.2" ry="0.12" transform="rotate(-35 -0.42 -0.45)" fill="#fff" opacity="0.75"/><circle cx="-0.15" cy="-0.68" r="0.05" fill="#fff" opacity="0.7"/>` };
+  };
+
   // ---------- Regenbogen ----------
   OB.regenbogen = (o, stil) => {
     const P = stil.palette, F = [P.rot, P.orange, P.gelb, P.gruen, P.blau, P.lila], d = 0.07;

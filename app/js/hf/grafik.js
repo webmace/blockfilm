@@ -204,6 +204,9 @@
   };
 
   OB.form = (o, stil, id) => {
+    // als Prisma oder Glas benanntes Dreieck sieht wie Glas aus, ein Tropfen-Kreis wie Wasser (Licht wird darin gebrochen)
+    if (o.art === 'dreieck' && /prisma|glas/i.test(o.name) && OB.prisma) return OB.prisma(o, stil, id);
+    if (['kreis', 'kugel'].includes(o.art) && /tropfen|glas|linse|wasser/i.test(o.name) && OB.tropfen) return OB.tropfen(o, stil, id);
     const f = SF(stil, o.farbe, '#4a8cff'), L = hell(f, 0.1), D = dunkel(f, 0.14), R = 0.12 + 0.18 * stil.form.rund;
     const poly = (n, r, rot = -Math.PI / 2, innen = null) => { let p = []; const m = innen ? n * 2 : n; for (let i = 0; i < m; i++) { const a = rot + i * 2 * Math.PI / m, rr = innen && i % 2 ? innen : r; p.push(`${f3(Math.cos(a) * rr)},${f3(Math.sin(a) * rr)}`); } return p.join(' '); };
     const gl = `<path d="M-0.55 -0.55 Q-0.45 -0.8 -0.1 -0.82" stroke="${rgba('#ffffff', 0.5)}" stroke-width="0.1" stroke-linecap="round" fill="none"/>`;
