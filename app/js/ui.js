@@ -225,6 +225,33 @@
         const r2 = await post('/api/ki', { thema, alter, stil, vorher: r.skript, fehler: probe.fehler.slice(0, 15) });
         if (r2.ok) r = Object.assign(r2, { quellen: (r.quellen || []).concat(r2.quellen || []) });
       }
+      // Regie-Prüfung: die KI schaut sich Standbilder ihres Films an und bessert nach
+      let regie = null;
+      if ($('kiRegie').checked) {
+        clearInterval(uhr);
+        const start3 = Date.now();
+        uhr = setInterval(() => kiStatus(`🎬 Die KI schaut sich ihren Film an und bessert nach … ${Math.round((Date.now() - start3) / 1000)} s`, 'laeuft'), 500);
+        try {
+          // bis zu zwei Runden: die zweite nur, wenn die automatische Prüfung danach noch etwas findet
+          const notizen = [];
+          for (let runde = 1; runde <= 2; runde++) {
+            regie = await regiePruefung(r.skript, { thema, alter, stil });
+            if (regie && regie.ok && regie.geaendert) {
+              let neu = regie.skript;
+              let pr = BF.kompiliere(neu);
+              if (pr.fehler.length) { // Nachbesserung hat Fehler: einmal reparieren lassen, sonst die alte Fassung behalten
+                const r3 = await post('/api/ki', { thema, alter, stil, vorher: neu, fehler: pr.fehler.slice(0, 15) });
+                neu = r3.ok ? r3.skript : null;
+                pr = neu ? BF.kompiliere(neu) : null;
+              }
+              if (neu && pr && !pr.fehler.length) { r.skript = neu; notizen.push(...regie.notizen); }
+              else { regie = { ok: false, fehler: 'Die Nachbesserung hatte Fehler, die vorige Fassung bleibt.' }; break; }
+            } else break;
+            if (!regieRest(r.skript, alter).length) break;
+          }
+          if (notizen.length) regie = { ok: true, geaendert: true, notizen };
+        } catch (e) { regie = { ok: false, fehler: e.message }; }
+      }
       // die KI hört nach, ob die Stimme jedes Wort richtig ausspricht (bevor die Stimme gerechnet wird)
       clearInterval(uhr);
       const start2 = Date.now();
@@ -243,6 +270,8 @@
       let zusatz = '';
       if (ausspr && ausspr.ok) zusatz = ausspr.korrekturen.length ? ` 🗣 Aussprache verbessert: ${ausspr.korrekturen.slice(0, 8).map(k => `${k.wort} → ${k.schreibweise}`).join(', ')}${ausspr.korrekturen.length > 8 ? ' …' : ''} (steht jetzt unter „Aussprache“).` : ' 🗣 Aussprache geprüft: alles richtig.';
       else if (ausspr) zusatz = ' (Aussprache konnte nicht geprüft werden.)';
+      if (regie && regie.ok) zusatz += regie.geaendert ? ` 🎬 Regie hat nachgebessert: ${(regie.notizen.length ? regie.notizen : ['einige Bilder verbessert']).join('; ')}.` : ' 🎬 Regie-Prüfung: alles gut.';
+      else if (regie) zusatz += ` (Regie-Prüfung ging nicht: ${regie.fehler})`;
       kiStatus(`✓ Fertig nach ${Math.round((Date.now() - start) / 1000)} Sekunden.${zusatz} Drück ▶ zum Anschauen.`);
     } catch (e) {
       kiStatus('⚠ ' + e.message, 'fehler');
@@ -252,6 +281,26 @@
       $('kiLos').disabled = false;
     }
   }
+  // Was die automatische Prüfung an einem Skript noch findet
+  function regieRest(skript, alter) {
+    const alt = BF.hf.standardAlter; BF.hf.standardAlter = alter;
+    try { const F = BF.kompiliere(skript); return BF.hf.passt(F) ? BF.hf.regieBefunde(F, skript) : []; } finally { BF.hf.standardAlter = alt; }
+  }
+  // Film übersetzen, Befunde sammeln, Komposition bauen; der Server macht Standbilder und fragt die KI
+  async function regiePruefung(skript, info) {
+    const altAlter = BF.hf.standardAlter;
+    BF.hf.standardAlter = info.alter;
+    try {
+      const sprach = Object.assign({}, BF.sprachDauer);
+      const F = BF.kompiliere(skript);
+      if (!BF.hf.passt(F)) return null; // Filme mit 3D-Blockwelt werden (noch) nicht geprüft
+      const befunde = BF.hf.regieBefunde(F, skript), momente = BF.hf.regieMomente(F, 10);
+      const html = BF.hf.komponiere(F, { skript, sprachDauer: sprach, alter: info.alter, breite: 1280, hoehe: 720, vorschau: true, ton: null, basis: '/' });
+      return await post('/api/ki/regie', Object.assign({}, info, { skript, html, momente, befunde }));
+    } finally { BF.hf.standardAlter = altAlter; }
+  }
+  try { const v = localStorage.getItem('bf_kiRegie'); if (v !== null) $('kiRegie').checked = v === '1'; } catch {}
+  $('kiRegie').addEventListener('change', () => { try { localStorage.setItem('bf_kiRegie', $('kiRegie').checked ? '1' : '0'); } catch {} });
   const skriptOhneKopf = () => ta.value.split('\n').filter(z => !z.startsWith('#KI ')).join('\n');
   $('kiLos').onclick = kiFilm;
   // Alter gilt für alle Filme: bei Änderung fertige Filme neu zusammenstellen

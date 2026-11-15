@@ -139,6 +139,46 @@ export async function kiSkript({ thema, alter = '3-5', stil = 'echt', vorher = n
   }
 }
 
+// ---------- Regie-Prüfung: die KI schaut sich Standbilder ihres eigenen Films an und bessert nach ----------
+export async function kiRegie({ thema, alter = '3-5', stil = 'echt', skript, befunde = [], bilder = [] }) {
+  if (!kiBereit()) return { ok: false, fehler: 'Es ist noch kein API-Schlüssel eingetragen.', schluessel: true };
+  const { default: Anthropic } = await import('@anthropic-ai/sdk');
+  const e = einstellungenLesen();
+  const client = e.apiKey ? new Anthropic({ apiKey: e.apiKey }) : new Anthropic();
+  const inhalt = [{ type: 'text', text: `Du hast diesen Erklärfilm geschrieben. Thema: ${thema}. Zielgruppe: ${ALTER[alter] || ALTER['3-5']}\n${STIL[stil] || STIL.echt}\n\nHier ist dein Skript:\n\`\`\`blockfilm\n${skript}\`\`\`\n\nJetzt bist du die Regie und prüfst den fertigen Film. Unten siehst du Standbilder aus dem gerenderten Film (jeweils mit der Zeit und dem Satz, den der Sprecher gerade sagt).${befunde.length ? `\n\nEine automatische Prüfung hat das gefunden:\n${befunde.map(b => '- ' + b).join('\n')}` : ''}` }];
+  for (const b of bilder) {
+    inhalt.push({ type: 'text', text: `Bild bei ${String(b.t).replace('.', ',')} s – Sprecher: „${b.satz || '(nichts)'}“` });
+    inhalt.push({ type: 'image', source: { type: 'base64', media_type: 'image/jpeg', data: b.daten } });
+  }
+  inhalt.push({ type: 'text', text: `Prüfe: Passt zu jedem Satz ein klares Bild? Ist etwas leer, verdeckt, abgeschnitten, unter den Untertiteln oder zu voll? Überdecken sich Dinge ungewollt? Ist das Bild für die Zielgruppe verständlich und lebendig (Bewegung, Kamera)? Gibt es lange Pausen? Stimmt fachlich alles?
+Wenn der Film gut ist, antworte nur mit: OK
+Sonst gib das vollständige verbesserte Skript in einem Codeblock, der mit \`\`\`blockfilm beginnt. Denk an die Zeitregeln: Eine Zeile mit Dauer (z. B. "wachsen2d baum in 3", "bewege2d … in 2", "warte 2") hält den Film an, bis sie fertig ist – auch wenn sie mit & an eine Zeile gehängt ist, die selbst kein Sprecher ist. Soll etwas WÄHREND eines Satzes passieren, schreib es mit & direkt unter die sprecher-Zeile. Ändere nur, was nötig ist: Text, Ablauf und Länge bleiben, die Zeile "zielgruppe" und alle Einstellungen am Anfang auch. Schreib nach dem Codeblock in 1 bis 5 kurzen Zeilen, die mit "- " beginnen, was du verbessert hast (auf Deutsch, einfach formuliert).` });
+  try {
+    const stream = client.beta.messages.stream({
+      model: 'claude-opus-5-5',
+      max_tokens: 64000,
+      betas: ['server-side-fallback-2026-07-01'],
+      fallbacks: 'default',
+      output_config: { effort: 'medium' },
+      system: [{ type: 'text', text: systemText(), cache_control: { type: 'ephemeral' } }],
+      messages: [{ role: 'user', content: inhalt }],
+    });
+    const antwort = await stream.finalMessage();
+    if (antwort.stop_reason === 'refusal') return { ok: false, fehler: 'Die KI wollte den Film nicht prüfen.' };
+    const text = antwort.content.filter(b => b.type === 'text').map(b => b.text).join('\n').trim();
+    if (!/```/.test(text)) return { ok: true, geaendert: false, notizen: [] };
+    const neu = skriptAus(text);
+    const notizen = text.replace(/```[\s\S]*?```/g, '').split('\n').map(z => z.trim()).filter(z => z.startsWith('- ')).map(z => z.slice(2)).slice(0, 6);
+    return { ok: true, geaendert: neu.trim() !== skript.trim(), skript: neu, notizen, verbrauch: antwort.usage };
+  } catch (err) {
+    if (err instanceof Anthropic.AuthenticationError) return { ok: false, fehler: 'Der API-Schlüssel stimmt nicht.', schluessel: true };
+    if (err instanceof Anthropic.RateLimitError) return { ok: false, fehler: 'Zu viele Anfragen gerade.' };
+    if (err instanceof Anthropic.APIConnectionError) return { ok: false, fehler: 'Keine Verbindung zur KI.' };
+    if (err instanceof Anthropic.APIError) return { ok: false, fehler: `KI-Fehler ${err.status}: ${err.message}` };
+    throw err;
+  }
+}
+
 // ---------- Aussprache-Prüfung: die KI hört (über die Lautschrift) mit, was die Stimme sagen wird ----------
 async function kiFragen(client, system, nachrichten, tools) {
   let antwort;

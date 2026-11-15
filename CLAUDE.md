@@ -25,6 +25,12 @@ Erklärfilm-Generator: Claude schreibt ein Skript in einer deutschen Befehlsspra
   - Vorschau in der App: Ein iframe (`#hfVorschau`, `srcdoc`) liegt über der Canvas und wird über `__bfZeige(t)` gesteuert.
 - **Alte Engine** (three.js + Canvas2D, `szene.js`): für alles mit 3D-Blockwelt, Figuren, Physik oder Videoclips. Bilder werden einzeln an ffmpeg geschickt (`/api/video/*`).
 
+## KI-Regie-Prüfung
+Nach dem Schreiben eines KI-Films (Schalter „🎬 Regie“, nur für Filme mit der 2D-Welt):
+- `app/js/hf/regie.js`: `HF.regieBefunde(F, skript)` findet automatisch leere Bilder, Objekte außerhalb oder unter den Untertiteln, Überdeckungen, lange Pausen (mit den Zeilen, die sie verursachen), volle Bilder und Emojis ohne Grafik. `HF.regieMomente` wählt die Zeitpunkte für Standbilder.
+- `/api/ki/regie` (server.mjs) rendert die Komposition mit Puppeteer, macht Standbilder (1280×720 JPEG) und ruft `kiRegie()` (ki.mjs) mit Bildern und Befunden auf. Antwort: `OK` oder ein verbessertes Skript mit kurzen Notizen.
+- `kiFilm()` (ui.js) macht höchstens zwei Runden. Die zweite gibt es nur, wenn die automatische Prüfung danach noch etwas findet. Hat die Nachbesserung Übersetzungsfehler, bleibt die vorige Fassung.
+
 ## Regeln für die Komposition
 - Deterministisch: kein `Date.now()`, kein `Math.random()` (stattdessen `HF.zufall(seed)` / `BF.rng`), keine Timer, kein `repeat: -1`. Alles muss allein von der Zeit abhängen.
 - Die App und die Komposition müssen dasselbe `F` berechnen. Was die Übersetzung beeinflusst, kommt deshalb in `laufDaten`: Skript, Sprechdauern zum Zeitpunkt des Kompilierens (`S.sprachStand`), `BF.stimmeWahl`, Zielgruppe. Passt etwas nicht, meldet `HF.starte` „Komposition passt nicht zum Skript“ in der Konsole.

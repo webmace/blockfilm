@@ -10,7 +10,7 @@ import os from 'node:os';
 import { spawn, execFile } from 'node:child_process';
 import crypto from 'node:crypto';
 import { fileURLToPath } from 'node:url';
-import { kiSkript, kiBereit, einstellungenSchreiben, kiAussprache } from './ki.mjs';
+import { kiSkript, kiBereit, einstellungenSchreiben, kiAussprache, kiRegie } from './ki.mjs';
 import { aussprechen, eigeneLesen, eigeneSchreiben, lautschrift } from './aussprache.mjs';
 
 const HIER = path.dirname(fileURLToPath(import.meta.url));
@@ -243,6 +243,33 @@ function piperProzess(datei, tempo) {
 process.on('exit', () => { for (const l of piperPool.values()) for (const pr of l) try { pr.proc.kill(); } catch {} });
 let tonDatei = null;
 
+// ---------- Regie-Prüfung: Standbilder der Komposition mit Chromium (Puppeteer) ----------
+const regieSeiten = new Map();
+async function regieBilder(html, momente) {
+  if (!html || !momente.length) return [];
+  const id = crypto.randomBytes(6).toString('hex');
+  regieSeiten.set(id, html);
+  const { default: puppeteer } = await import('puppeteer-core');
+  const b = await puppeteer.launch({ executablePath: chromiumPfad(), args: ['--no-sandbox', '--hide-scrollbars'] });
+  try {
+    const seite = await b.newPage();
+    await seite.setViewport({ width: 1280, height: 720 });
+    await seite.goto(`http://127.0.0.1:${server.address().port}/hf-regie/${id}.html`, { waitUntil: 'load', timeout: 60000 });
+    await seite.evaluate(() => document.fonts.ready);
+    await seite.waitForFunction(() => typeof window.__bfZeige === 'function', { timeout: 30000 });
+    const out = [];
+    for (const m of momente) {
+      await seite.evaluate(t => window.__bfZeige(t), Number(m.t) || 0);
+      const daten = await seite.screenshot({ type: 'jpeg', quality: 72, encoding: 'base64' });
+      out.push({ t: m.t, satz: String(m.satz || '').slice(0, 300), daten });
+    }
+    return out;
+  } finally {
+    regieSeiten.delete(id);
+    await b.close().catch(() => {});
+  }
+}
+
 // ---------- HyperFrames: Komposition in einen Projektordner schreiben und mit @hyperframes/producer rendern ----------
 let hfJob = null;
 const HF_ORDNER = path.join(CACHE, 'hf');
@@ -356,6 +383,20 @@ async function anfrage(req, res) {
         try { erg.aussprache = await kiAussprache(erg.skript, { aussprechen, lautschrift, eigeneLesen, eigeneSchreiben }); } catch (e) { erg.aussprache = { ok: false, fehler: String(e.message || e) }; }
       }
       return json(res, erg);
+    }
+    if (p.startsWith('/hf-regie/')) {
+      // Komposition für die Regie-Prüfung (nur kurz im Speicher)
+      const html = regieSeiten.get(p.slice(10).replace(/\.html$/, ''));
+      if (!html) return json(res, { fehler: 'nicht gefunden' }, 404);
+      res.writeHead(200, { 'content-type': 'text/html; charset=utf-8', 'cache-control': 'no-store' });
+      return res.end(html);
+    }
+    if (p === '/api/ki/regie' && req.method === 'POST') {
+      const o = JSON.parse((await koerper(req)).toString('utf8'));
+      let bilder = [];
+      try { bilder = await regieBilder(String(o.html || ''), (o.momente || []).slice(0, 12)); }
+      catch (e) { console.error('Regie-Standbilder:', e.message); }
+      return json(res, Object.assign(await kiRegie({ thema: String(o.thema || '').slice(0, 500), alter: o.alter, stil: o.stil, skript: String(o.skript || ''), befunde: (o.befunde || []).slice(0, 30).map(String), bilder }), { bilder: bilder.length }));
     }
     if (p === '/api/stimmen') return json(res, { piper: fs.existsSync(PIPER), stimmen: stimmenListe(), anzeige: stimmenAnzeige() });
     if (p === '/api/sprechen' && req.method === 'POST') {

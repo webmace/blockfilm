@@ -31,6 +31,7 @@
           <input id="kiThema" spellcheck="true" lang="de" placeholder="Was soll die KI erklären? z. B. Warum ist der Himmel blau?">
           <select id="kiAlter" title="Für welches Alter? Gilt für die KI und für die fertigen Filme."><option value="0-2">0–2 Jahre</option><option value="3-5" selected>3–5 Jahre</option><option value="6-9">6–9 Jahre</option><option value="10+">10+ Jahre</option></select>
           <select id="kiStil" title="Wie soll der Film aussehen?"><option value="echt" selected>🌍 Echte Welt</option><option value="minecraft">🧱 Minecraft</option><option value="egal">🎲 KI entscheidet</option></select>
+          <label class="schalter" title="Regie-Prüfung: Die KI schaut sich Standbilder ihres fertigen Films an (leere Bilder, Verdecktes, Abgeschnittenes, lange Pausen) und bessert nach. Dauert etwa eine Minute länger."><input type="checkbox" id="kiRegie" checked> 🎬 Regie</label>
           <button id="kiLos" class="haupt" title="Die KI schreibt einen ganz neuen Film zu deinem Thema (braucht einen API-Schlüssel)">🤖 KI-Film</button>
           <button id="kiEinst" title="KI-Einstellungen (API-Schlüssel)">⚙</button>
         </div>
@@ -190,6 +191,7 @@
 <script src="js/hf/figuren2d.js"></script>
 <script src="js/hf/keime2d.js"></script>
 <script src="js/hf/rest2d.js"></script>
+<script src="js/hf/regie.js"></script>
 <script src="js/hf/komponiere.js"></script>
 <script src="js/ui.js"></script>
 </body>
