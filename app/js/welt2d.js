@@ -681,6 +681,12 @@
       if (p) { x = lerp(x, p[0], u); y = lerp(y, p[1], u); }
       if (k.zoom !== null) z = lerp(z, k.zoom, u);
     }
+    // Wackeln (z. B. bei Explosionen in Was-wäre-wenn-Filmen)
+    for (const w of F.w2d.wackeln || []) {
+      if (t < w.t0 || t >= w.t1) continue;
+      const u = 1 - (t - w.t0) / (w.t1 - w.t0), a = w.staerke * u * u;
+      x += Math.sin(t * 47 + w.t0) * a; y += Math.cos(t * 39 + w.t0 * 2) * a * 0.7;
+    }
     return { x, y, z };
   }
   function lochAktiv(F, t) {

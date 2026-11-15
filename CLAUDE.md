@@ -32,6 +32,9 @@ Erklärfilm-Generator: Claude schreibt ein Skript in einer deutschen Befehlsspra
 - Einmalige Dinge (Mond, Sonne, Erde …, gleicher Name): `neuesObjekt` (welt2d.js) blendet das alte aus, wenn ein neues dazukommt.
 - SVG-Klassennamen nicht doppelt vergeben: `.schatten` ist für Planeten reserviert (wird zur Sonne gedreht).
 
+## Spannung (Was-wäre-wenn)
+- `app/js/spannung.js`: erkennt Was-wäre-wenn-Filme (`BF.filmIstWasWaere`: Titel, KI-Thema, erste Kapitelkarte; Achtung, `BF.istWasWaere` aus klartext.js ist etwas anderes), Stufe nach Zielgruppe (`kind`/`mittel`/`voll`). Karten mit `tx.spannung`, Geräusche `trommelwirbel`/`tusch`/`spannung` (ton.js), 2D-Kamerawackeln `F.w2d.wackeln` (welt2d.js `kamera()`).
+
 ## Film-Übersicht und Hintergrund-Exporte
 - Button „🎬 Alle Filme“ (`#galerie`, ui.js): fertige Videos (Abspielen im `#spieler`), KI-Filme, Themen-Filme, eigene Skripte; jeweils Ansehen oder Exportieren.
 - Exporte von dort gehen in die Warteschlange `/api/stapel` (server.mjs). Sie laufen nacheinander als eigene Prozesse `server.mjs --render … --stimme … --sprechtempo … --alter …`. Themen-Filme werden vorher als Skript nach `~/.cache/blockfilm/stapel/` geschrieben.

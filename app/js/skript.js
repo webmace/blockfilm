@@ -228,6 +228,7 @@
       effekte: [], koerper: [], explosionen: [], toene: [], musik: [], blitze: [], fehler: [], dauer: 0, festeDauer: null,
       schwerkraft: 25, abprall: 0.25, standardSkin: BF.standardSkin || null,
     };
+    { const k = /^#KI (.*)$/m.exec(text); if (k) try { F.kiInfo = JSON.parse(k[1]); } catch {} } // Thema, Alter … aus dem KI-Kopf
     const W = F.W;
     erzeugeWelt(F, W, F.weltOpt);
     let weltGesetzt = false;

@@ -125,6 +125,24 @@
         }
         lärm(t, 1.1, 'highpass', 1800, 2500, 0.05 * v, 0.15, 0.7);
       },
+      // Spannung (Was-wäre-wenn-Filme)
+      trommelwirbel(t, o) { // Snare-Wirbel, der lauter wird
+        const v = o.vol ?? 1, d = o.dauer || 1.4, n = Math.round(d * 22);
+        for (let i = 0; i < n; i++) { const u = i / n; lärm(t + i * d / n, 0.045, 'bandpass', 1800 + r() * 600, 1400, (0.05 + 0.2 * u * u) * v, 0.002, 1.2); }
+        ton(t, d, 'sine', 90, 110, 0.06 * v, d * 0.8);
+      },
+      tusch(t, o) { // tiefer Schlag mit Becken
+        const v = o.vol ?? 1;
+        ton(t, 0.9, 'sine', 80, 38, 0.8 * v, 0.003);
+        lärm(t, 0.12, 'lowpass', 900, 200, 0.5 * v, 0.002);
+        lärm(t, 1.8, 'highpass', 5000, 7000, 0.18 * v, 0.004, 0.7);
+      },
+      spannung(t, o) { // tiefes, aufsteigendes Brummen
+        const v = o.vol ?? 1, d = o.dauer || 3;
+        ton(t, d, 'sawtooth', 55, 82, 0.05 * v, d * 0.9);
+        ton(t, d, 'sine', 110, 164, 0.06 * v, d * 0.9);
+        lärm(t, d, 'bandpass', 200, 600, 0.05 * v, d * 0.9, 1.5);
+      },
       herzschlag(t, o) { const v = o.vol ?? 1; for (const [d, st] of [[0, 1], [0.22, 0.7]]) { ton(t + d, 0.12, 'sine', 70, 45, 0.6 * st * v, 0.005); lärm(t + d, 0.06, 'lowpass', 200, 120, 0.25 * st * v, 0.004); } },
       wind(t, o) { lärm(t, 1.8, 'bandpass', 300, 900, 0.25 * (o.vol ?? 1), 0.6, 1.2); },
       platsch(t, o) { lärm(t, 0.35, 'lowpass', 1800, 300, 0.45 * (o.vol ?? 1), 0.003); ton(t, 0.18, 'sine', 300, 90, 0.25 * (o.vol ?? 1)); for (let i = 0; i < 6; i++) lärm(t + 0.1 + r() * 0.3, 0.04, 'bandpass', 2500, 1500, 0.06, 0.002, 3); },

@@ -12,7 +12,7 @@
   const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 
   // Skripte, die die Komposition braucht (dieselbe Engine wie die App, nur ohne Oberfläche)
-  HF.SKRIPTE = ['vendor/three.min.js', 'vendor/gsap.min.js', 'js/texturen.js', 'js/skript.js', 'js/physik.js', 'js/ablauf.js', 'js/figuren.js', 'js/wissen.js', 'js/video.js', 'js/welt2d.js', 'js/urzeit.js', 'js/maskottchen.js', 'js/tiere.js', 'js/waswaere.js', 'js/autokorrektur.js', 'js/klartext.js', 'js/hf/stile.js', 'js/hf/twemoji-liste.js', 'js/hf/grafik.js', 'js/hf/figuren2d.js', 'js/hf/keime2d.js', 'js/hf/tiere2d.js', 'js/hf/rest2d.js', 'js/hf/komponiere.js'];
+  HF.SKRIPTE = ['vendor/three.min.js', 'vendor/gsap.min.js', 'js/texturen.js', 'js/skript.js', 'js/physik.js', 'js/ablauf.js', 'js/figuren.js', 'js/wissen.js', 'js/video.js', 'js/welt2d.js', 'js/urzeit.js', 'js/maskottchen.js', 'js/tiere.js', 'js/spannung.js', 'js/waswaere.js', 'js/autokorrektur.js', 'js/klartext.js', 'js/hf/stile.js', 'js/hf/twemoji-liste.js', 'js/hf/grafik.js', 'js/hf/figuren2d.js', 'js/hf/keime2d.js', 'js/hf/tiere2d.js', 'js/hf/rest2d.js', 'js/hf/komponiere.js'];
 
   HF.passt = function (F) {
     if (!F || !F.w2d || !F.w2d.liste) return false;
@@ -121,6 +121,7 @@
     const tx = e.tx, T = stil.text;
     const farbe = /^#?f{3,6}$/i.test(tx.farbe || '#fff') ? null : HF.stilFarbe(stil, tx.farbe);
     const st = farbe ? ` style="color:${farbe}"` : '';
+    if (e.art === 'karte' && tx.spannung) return `<div class="flaeche"></div><div class="kreis k1"></div><div class="kreis k2"></div><div class="spannung-titel">WAS WÄRE, WENN …?</div><div class="band"><span${st}>${worte(tx.text, stil.schrift.versal)}</span></div>`;
     if (e.art === 'karte') return `<div class="flaeche"></div><div class="kreis k1"></div><div class="kreis k2"></div><div class="band"><span${st}>${worte(tx.text, stil.schrift.versal)}</span></div>`;
     if (e.art === 'unter') return `<span class="pille">${esc(tx.text)}</span>`;
     if (e.art === 'titel') return `<div class="gross"${st}>${worte(tx.text, stil.schrift.versal)}</div>`;
@@ -169,6 +170,17 @@ html,body{margin:0;padding:0;background:#000;overflow:hidden}
 .k2{width:${r2(H * 0.6)}px;height:${r2(H * 0.6)}px;right:${r2(-H * 0.1)}px;bottom:${r2(-H * 0.2)}px;background:rgba(255,255,255,.06)}
 .karte .band{position:relative;padding:${r2(22 * E)}px ${r2(60 * E)}px;box-shadow:0 ${r2(14 * E)}px 0 rgba(0,0,0,.18)}
 .karte .band>span{font-size:${r2(76 * E)}px}
+.txt.spannung .flaeche{background:radial-gradient(circle at 50% 45%,#5a1030,#14061a 75%)}
+.txt.spannung .kreis{background:rgba(255,60,90,.08)}
+.txt.spannung .band{background:#ff2d55;box-shadow:0 ${r2(14 * E)}px 0 rgba(0,0,0,.35)}
+.txt.sp-mittel .flaeche{background:radial-gradient(circle at 50% 45%,#3b2a9a,#120a3a 78%)}
+.txt.sp-mittel .band{background:#ff4fa0}
+.txt.sp-kind .flaeche{background:linear-gradient(135deg,${stil.palette.lila},${stil.palette.pink} 55%,${stil.palette.orange})}
+.txt.sp-kind .kreis{background:rgba(255,255,255,.14)}
+.txt.sp-kind .band{background:${stil.palette.gelb};box-shadow:0 ${r2(14 * E)}px 0 rgba(0,0,0,.15)}
+.txt.sp-kind .band>span{color:${stil.palette.schwarz}}
+.txt.sp-kind .spannung-titel{color:#fff;text-shadow:0 ${r2(5 * E)}px 0 rgba(0,0,0,.18)}
+.spannung-titel{position:absolute;left:0;right:0;top:${r2(H * 0.3)}px;text-align:center;font-family:${S.titel},sans-serif;font-weight:${S.titelGewicht};font-size:${r2(40 * E)}px;letter-spacing:.12em;color:#ffd23f}
 .uebl{position:absolute;left:0;top:0;width:${W}px;height:${H}px}
 .tafel{position:absolute;top:${r2(H * 0.08)}px;width:${r2(W * 0.38)}px;background:#fff;color:${stil.palette.schwarz};border-radius:${r2(28 * E * R + 6 * E)}px;overflow:hidden;box-shadow:0 ${r2(16 * E)}px 0 rgba(0,0,0,.18)}
 .tafel.links{left:${r2(W * 0.04)}px}.tafel.rechts{right:${r2(W * 0.04)}px}.tafel.mitte{left:${r2(W * 0.2)}px;width:${r2(W * 0.6)}px}
@@ -206,7 +218,7 @@ html,body{margin:0;padding:0;background:#000;overflow:hidden}
     teile.push(`<canvas id="leinwand" class="clip" data-start="0" data-duration="${D}" data-track-index="${spur++}" width="${W}" height="${H}"></canvas>`);
     for (const e of P.schilder) teile.push(clip(e.id, 'schilde', e.t0, e.t1, `<svg class="sl" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}"><line id="${e.id}l" stroke="#ffffff" stroke-opacity="0.85" stroke-linecap="round"/><circle id="${e.id}c" r="0" fill="${stil.palette.gelb}"/></svg><div class="schild" id="${e.id}b"><span>${esc(stil.schrift.versal ? String(e.tx.text).toUpperCase() : e.tx.text)}</span></div>`));
     for (const e of P.ueber) teile.push(clip(e.id, 'uebl', e.t0, e.t1, ueberMarkup(e, stil)));
-    for (const e of P.texte) teile.push(clip(e.id, 'txt ' + e.art, e.t0, e.t1, textMarkup(e, stil)));
+    for (const e of P.texte) teile.push(clip(e.id, 'txt ' + e.art + (e.tx.spannung ? ' spannung sp-' + e.tx.spannung : ''), e.t0, e.t1, textMarkup(e, stil)));
     teile.push(clip('blende', '', 0, P.D, ''));
     teile.push(clip('blitz', '', 0, P.D, ''));
     if (daten.ton) teile.push(`<audio id="ton" class="clip" data-start="0" data-duration="${D}" data-track-index="${spur++}" data-volume="1" src="${esc(daten.ton)}"></audio>`);
@@ -326,6 +338,23 @@ ${HF.SKRIPTE.map(s => `<script src="${basis}${s}"></script>`).join('\n')}
         tl.fromTo(band, { scaleX: 0, transformOrigin: '0% 50%' }, { scaleX: 1, duration: 0.45, ease: 'power3.out', immediateRender: false }, e.t0);
         tl.fromTo(band.firstElementChild, { opacity: 0, x: -20 }, { opacity: 1, x: 0, duration: 0.35, ease: 'power2.out', immediateRender: false }, e.t0 + 0.2);
         if (ende) tl.to(band, { opacity: 0, x: -40, duration: aus, ease: 'power2.in' }, e.t1 - aus);
+      } else if (e.art === 'karte' && e.tx.spannung) {
+        // Was-wäre-wenn: dunkel, das Band knallt herein und wackelt kurz
+        const fl = el.querySelector('.flaeche'), band = el.querySelector('.band'), kr = el.querySelectorAll('.kreis'), ti = el.querySelector('.spannung-titel'), w = el.querySelectorAll('.wort');
+        tl.fromTo(fl, { opacity: 0 }, { opacity: 1, duration: 0.25, ease: 'none', immediateRender: false }, e.t0);
+        tl.fromTo(kr, { scale: 0.4, opacity: 0 }, { scale: 1.1, opacity: 1, duration: 1.2, ease: 'power2.out', stagger: 0.1, immediateRender: false }, e.t0);
+        tl.fromTo(ti, { opacity: 0, y: -30, letterSpacing: '0.5em' }, { opacity: 1, y: 0, letterSpacing: '0.12em', duration: 0.6, ease: 'power3.out', immediateRender: false }, e.t0 + 0.05);
+        if (e.tx.spannung === 'kind') {
+          // fröhlich: das Band hüpft federnd herein und wackelt lustig, statt hereinzuknallen
+          tl.fromTo(band, { scale: 0, rotation: -12 }, { scale: 1, rotation: 0, duration: 0.8, ease: 'elastic.out(1, 0.45)', immediateRender: false }, e.t0 + 0.25);
+          tl.fromTo(ti, { rotation: -3 }, { rotation: 3, duration: 0.35, ease: 'sine.inOut', yoyo: true, repeat: 5, immediateRender: false }, e.t0 + 0.6);
+        } else {
+          tl.fromTo(band, { scale: 1.9, opacity: 0, rotation: -4 }, { scale: 1, opacity: 1, rotation: 0, duration: 0.45, ease: 'expo.out', immediateRender: false }, e.t0 + 0.3);
+          tl.fromTo(band, { x: -10 }, { x: 10, duration: 0.05, ease: 'none', yoyo: true, repeat: e.tx.spannung === 'voll' ? 5 : 3, immediateRender: false }, e.t0 + 0.75);
+          tl.set(band, { x: 0 }, e.t0 + 1.05);
+        }
+        tl.fromTo(w, { opacity: 0 }, { opacity: 1, duration: 0.2, stagger: 0.05, immediateRender: false }, e.t0 + 0.35);
+        if (ende) tl.to([fl, ...kr, band, ti], { opacity: 0, duration: 0.35, ease: 'none' }, e.t1 - 0.35);
       } else if (e.art === 'karte') {
         const fl = el.querySelector('.flaeche'), band = el.querySelector('.band'), kr = el.querySelectorAll('.kreis'), w = el.querySelectorAll('.wort');
         tl.fromTo(fl, { opacity: 0 }, { opacity: 1, duration: 0.3, ease: 'none', immediateRender: false }, e.t0);

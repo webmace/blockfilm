@@ -93,6 +93,8 @@ Auflösungen: `4k`, `1440p`, `1080p`, `720p`, `hochkant` (1080×1920 für Shorts
 ```
 zielgruppe 3-5
 ```
+`spannung an` / `spannung aus` – Spannungsmodus für Was-wäre-wenn-Filme (wird sonst automatisch erkannt): besondere Kapitelkarten, Trommelwirbel bei Fragen, langsames Heranfahren der Kamera, Wackeln bei Explosionen. Für 0–5 Jahre bleibt alles fröhlich (bunte Karten, Tada, kaum Wackeln), ab 10 wird es dramatisch.
+
 Legt den Bildstil fest (`0-2`, `3-5`, `6-9`, `10+`): Farben, Schrift und wie lebhaft Dinge erscheinen und sich bewegen. Ohne diesen Befehl gilt die Auswahl in der App. Filme nur mit der 2D-Welt werden im neuen Flat-Look (wie bei Erklärvideos auf YouTube) mit HyperFrames gebaut; Filme mit der 3D-Blockwelt sehen aus wie bisher.
 
 ## Musik und Töne
