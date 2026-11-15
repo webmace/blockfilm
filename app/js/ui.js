@@ -206,6 +206,7 @@
     if (kiLaeuft) return;
     const eingabe = $('kiThema').value.trim();
     if (!eingabe) { kiStatus(S.ki ? 'Schreib, was anders sein soll.' : 'Schreib zuerst ein Thema, z. B. „Warum regnet es?“', 'fehler'); $('kiThema').focus(); return; }
+    if (!S.kiBereit) await kiPruefen(); // gespeicherten Schlüssel noch einmal nachsehen
     if (!S.kiBereit) { kiEinstellungen(); return; }
     kiLaeuft = true;
     $('kiLos').disabled = true;
@@ -231,6 +232,13 @@
       let ausspr = null;
       try { ausspr = await post('/api/ki/aussprache', { skript: r.skript }); } catch {}
       kiLaden({ thema, alter, stil, quellen: r.quellen || (S.ki && S.ki.quellen) || [] }, r.skript);
+      // jeder KI-Film wird gespeichert und erscheint in der Film-Leiste
+      try {
+        const name = 'KI/' + ((t => t.length > 60 ? t.slice(0, 60).replace(/\s+\S*$/, '') : t)(thema.replace(/[^\wäöüÄÖÜß\- ]+/g, '').trim()) || 'KI-Film') + ' (' + alter + ')';
+        const gesp = await post('/api/schreiben', { pfad: name, text: ta.value });
+        S.datei = gesp.pfad; S.zeitDatei = gesp.zeit; S.geaendert = false; titelAkt();
+        filmleisteLaden();
+      } catch {}
       $('kiThema').value = '';
       let zusatz = '';
       if (ausspr && ausspr.ok) zusatz = ausspr.korrekturen.length ? ` 🗣 Aussprache verbessert: ${ausspr.korrekturen.slice(0, 8).map(k => `${k.wort} → ${k.schreibweise}`).join(', ')}${ausspr.korrekturen.length > 8 ? ' …' : ''} (steht jetzt unter „Aussprache“).` : ' 🗣 Aussprache geprüft: alles richtig.';
@@ -282,7 +290,8 @@
     S.zeichnen = true;
     S.vorb = vorbereiten(F);
     if (S.modus === 'text' && kt.value.trim() && $('bericht').dataset.k !== String(S.gen)) { $('bericht').dataset.k = String(S.gen); }
-    // Ton im Hintergrund berechnen
+    // Ton im Hintergrund berechnen (läuft der Film gerade, alten Ton anhalten; der neue setzt nahtlos an derselben Stelle ein)
+    if (S.spielt) { tonStoppen(); uhrStart = performance.now(); uhrT = S.t; }
     tonNeu();
   }
   // Ton in Stücken von 20 Sekunden berechnen: zuerst das Stück, das gerade läuft, dann die nächsten.
@@ -313,7 +322,7 @@
         }
         S.tonStuecke[k] = { von: k * STUECK, buf };
         if (n === 1) S.tonBuf = buf;
-        if (S.spielt) stueckPlanen(S.tonStuecke[k]);
+        if (S.spielt) { if (tonLaeuft) stueckPlanen(S.tonStuecke[k]); else tonStarten(); }
         await new Promise(r => setTimeout(r, 0));
       }
     }, 300);
@@ -343,11 +352,23 @@
     }
     if (!S.stimmen || !S.stimmen.piper || !S.stimmen.stimmen.length) { try { S.stimmen = await api('/api/stimmen'); stimmenMenue(); } catch {} }
     if (S.stimmen && S.stimmen.piper && S.stimmen.stimmen.length) {
-      const offen = (F.sprache || []).filter(sp => !(sp.key in BF.sprachDauer) && !BF.sprachPuffer[sp.key]);
+      // in Zeitreihenfolge einlesen: dann kann der Film schon starten, wenn der Anfang fertig ist
+      const offen = (F.sprache || []).filter(sp => !(sp.key in BF.sprachDauer) && !BF.sprachPuffer[sp.key]).sort((a, b) => a.t0 - b.t0);
+      if (gen === S.gen) S.bereitBis = offen.length ? offen[0].t0 : Infinity;
+      if (gen === S.gen && !offen.length && S.stimmeLaedt) { S.stimmeLaedt = false; status('🗣 Sprecher ist bereit.'); }
       if (offen.length) {
         S.stimmeLaedt = true;
-        let fertig = 0;
-        const zeige = () => status(`🗣 Sprecher wird eingelesen … ${fertig} von ${offen.length}`);
+        let fertig = 0, uebernommen = 0;
+        const erledigt = new Set();
+        const zeige = () => { if (gen === S.gen) status(`🗣 Sprecher wird eingelesen … ${fertig} von ${offen.length}${S.bereitBis - S.t > 15 && S.bereitBis < Infinity ? ' · du kannst schon ▶ drücken' : ''}`); };
+        const zwischenstand = () => {
+          // fertige Sätze am Stück vom Anfang → Film neu zusammensetzen (nicht während des Abspielens oder Exports)
+          if (gen !== S.gen || S.export || S.spielt) return;
+          let k = 0; while (k < offen.length && erledigt.has(offen[k].key)) k++;
+          if (k >= offen.length || k - uebernommen < (uebernommen ? 20 : 5)) return;
+          uebernommen = k;
+          setTimeout(() => { if (!S.export && !S.spielt) kompilieren(); }, 0);
+        };
         zeige();
         BF.sprachLaeuft = BF.sprachLaeuft || {};
         const eins = async sp => {
@@ -364,13 +385,14 @@
           }
           try { await BF.sprachLaeuft[sp.key]; neu = true; }
           catch (e) { BF.sprachDauer[sp.key] = sp.t1 - sp.t0; zusatzFehler.push('Sprecher: ' + e.message); }
-          fertig++; zeige();
+          fertig++; erledigt.add(sp.key); zeige(); zwischenstand();
         };
         // mehrere Sätze gleichzeitig einlesen
         const liste = offen.slice();
-        await Promise.all([0, 1, 2].map(async () => { while (liste.length) await eins(liste.shift()); }));
-        S.stimmeLaedt = false;
-        status('🗣 Sprecher ist bereit.');
+        // Sätze, die im aktuellen Film nicht mehr vorkommen (anderer Film geladen), werden nicht mehr eingelesen
+        const nochGebraucht = sp => gen === S.gen || (S.F && (S.F.sprache || []).some(x => x.key === sp.key));
+        await Promise.all([0, 1, 2].map(async () => { while (liste.length) { const sp = liste.shift(); if (nochGebraucht(sp)) await eins(sp); } }));
+        if (gen === S.gen) { S.stimmeLaedt = false; status('🗣 Sprecher ist bereit.'); }
       }
     }
     for (const c of F.clips || []) {
@@ -467,13 +489,13 @@
   let wartetAufStimme = false;
   async function spielen(an) {
     if (!S.F) return;
-    if (an && (S.stimmeLaedt || (S.F.sprache && S.F.sprache.length && !tonBereit(S.t >= S.F.dauer - 0.05 ? 0 : S.t)))) {
+    const stimmeFehlt = () => S.stimmeLaedt && (S.t >= S.F.dauer - 0.05 ? 0 : S.t) >= (S.bereitBis ?? Infinity) - 1;
+    if (an && (stimmeFehlt() || (S.F.sprache && S.F.sprache.length && !tonBereit(S.t >= S.F.dauer - 0.05 ? 0 : S.t)))) {
       if (wartetAufStimme) return;
       wartetAufStimme = true;
       $('b-spielen').textContent = '⏳';
       status('⏳ Einen Moment – der Sprecher wird noch eingelesen, dann geht es los …');
-      try { await S.vorb; } catch {}
-      for (let i = 0; i < 150 && (S.stimmeLaedt || !tonBereit(S.t >= S.F.dauer - 0.05 ? 0 : S.t)); i++) await new Promise(r => setTimeout(r, 200));
+      for (let i = 0; i < 600 && (stimmeFehlt() || !tonBereit(S.t >= S.F.dauer - 0.05 ? 0 : S.t)); i++) await new Promise(r => setTimeout(r, 200));
       wartetAufStimme = false;
     }
     S.spielt = an;
@@ -630,6 +652,14 @@
       if (tonLaeuft && ac && ac.state === 'running') S.t = ac.currentTime - tonStart;
       else S.t = uhrT + (performance.now() - uhrStart) / 1000;
       if (S.t >= S.F.dauer) { S.t = S.F.dauer; spielen(false); }
+      else if (S.stimmeLaedt && S.t >= (S.bereitBis ?? Infinity) - 0.5 && !S.wartetWeiter) {
+        // der Sprecher ist hier noch nicht eingelesen: kurz anhalten, Neues übernehmen, weiter
+        S.wartetWeiter = true;
+        spielen(false);
+        status('⏳ Kurz warten – der Sprecher wird weiter eingelesen …');
+        kompilieren();
+        (async () => { await spielen(true); S.wartetWeiter = false; })();
+      }
       S.zeichnen = true;
       // aktuelle Zeile im Editor markieren
       let jetzt = -1;
@@ -716,8 +746,6 @@
     const j = await r.json();
     if (!r.ok || j.fehler) throw new Error(j.fehler || 'Hochladen fehlgeschlagen');
     await materialLaden();
-    await kiPruefen();
-    if (!S.kiBereit) kiStatus('Tipp: Mit ⚙ richtest du die KI ein. Dann schreibt „🤖 KI-Film“ ganze Filme zu jedem Thema.');
     if (S.modus === 'text') {
       kt.focus();
       const vor2 = kt.value;
@@ -827,6 +855,46 @@
     else if ((e.key === 'f' || e.key === 'F') && !e.ctrlKey && !e.altKey && !imSchreibfeld()) { e.preventDefault(); vollbild(); }
   });
 
+  // ---------- Film-Leiste: alle fertigen Filme und gespeicherten KI-Filme zum Auswählen ----------
+  const FILM_ICON = { technik: '📱', viren: '🦠', koerper: '🫀', klima: '🌍', himmelblau: '🌤️', geister: '👻', herbst: '🍂', schwarzesloch: '⚫', tagundnacht: '🌗', umlaufbahn: '🌙', mathe: '➗', dinos: '🦖', erdestopp: '🌀' };
+  const KURZNAME = { technik: 'Handys & Computer', viren: 'Viren', koerper: 'Körper', klima: 'Klima', himmelblau: 'Himmel blau', geister: 'Durch Wände?', herbst: 'Herbstblätter', schwarzesloch: 'Schwarzes Loch', tagundnacht: 'Tag & Nacht', umlaufbahn: 'Mond', mathe: 'Mathe', dinos: 'Dinosaurier', erdestopp: 'Erde bleibt stehen?' };
+  let filmListeKI = [];
+  async function filmleisteLaden() {
+    try { filmListeKI = (await api('/api/filmliste')).ki || []; } catch { filmListeKI = []; }
+    filmleisteZeigen();
+  }
+  function filmleisteZeigen() {
+    const aktTitel = S.ki ? S.ki.thema : (kt.value || '').trim();
+    const fertig = Object.entries(BF.THEMEN || {}).map(([k, th]) => `<button data-thema="${k}" title="${esc(th.name)}" class="${!S.ki && aktTitel === th.name ? 'aktiv' : ''}">${FILM_ICON[k] || '🎬'} ${esc(KURZNAME[k] || th.name)}</button>`).join('');
+    const ki = filmListeKI.map(f => `<button class="ki${S.datei === f.pfad ? ' aktiv' : ''}" data-pfad="${esc(f.pfad)}" title="KI-Film: ${esc(f.thema)}${f.alter ? ' (' + esc(f.alter) + ' Jahre)' : ''} – gespeichert ${new Date(f.zeit).toLocaleString('de-DE')}">🤖 ${esc(f.thema.length > 38 ? f.thema.slice(0, 36) + '…' : f.thema)}<span class="fl-weg" data-weg="${esc(f.pfad)}" title="Diesen KI-Film löschen">✕</span></button>`).join('');
+    $('flListe').innerHTML = (ki ? ki + '<span class="fl-trenner"></span>' : '') + fertig;
+  }
+  $('flListe').addEventListener('click', async e => {
+    const weg = e.target.closest('[data-weg]');
+    if (weg) {
+      e.stopPropagation();
+      if (!confirm('Diesen KI-Film löschen? Er wird aus der Leiste und von der Festplatte entfernt.')) return;
+      await post('/api/filme/loeschen', { pfad: weg.dataset.weg });
+      if (S.datei === weg.dataset.weg) S.datei = null;
+      return filmleisteLaden();
+    }
+    const b = e.target.closest('button'); if (!b) return;
+    if (S.export) return status('Während ein Video gespeichert wird, kann kein anderer Film geladen werden.');
+    if (S.geaendert && S.modus === 'skript' && !confirm('Dein Skript ist noch nicht gespeichert. Trotzdem einen anderen Film laden?')) return;
+    if (b.dataset.pfad) { await oeffnePfad(b.dataset.pfad); status('🎞️ KI-Film geladen. Drück ▶ zum Anschauen.'); }
+    else if (b.dataset.thema) {
+      const th = BF.THEMEN[b.dataset.thema];
+      S.ki = null; S.datei = null; kiAnsicht(); modus('text');
+      kt.value = th.name; S.t = 0;
+      klartextUebersetzen();
+      status(`🎞️ „${th.name}“ geladen (${BF.ALTER_NAME[$('kiAlter').value] || ''}). Drück ▶ zum Anschauen.`);
+    }
+    filmleisteZeigen();
+  });
+  // Mausrad scrollt die Leiste seitwärts
+  $('flListe').addEventListener('wheel', e => { if (Math.abs(e.deltaY) > Math.abs(e.deltaX)) { $('flListe').scrollLeft += e.deltaY; e.preventDefault(); } }, { passive: false });
+  setTimeout(filmleisteLaden, 800);
+
   // ---------- Übersicht aller Exporte (auch Hintergrund und Nacht-Export) ----------
   const WTAGE = ['So', 'Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa'];
   const zeitText = ms => { const d = new Date(ms); return `${WTAGE[d.getDay()]} ${String(d.getDate()).padStart(2, '0')}.${String(d.getMonth() + 1).padStart(2, '0')}. ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`; };
@@ -889,8 +957,15 @@
   };
   $('ex-stopp').onclick = () => { S.abbruch = true; };
 
+  // Nach Ruhezustand oder kurzer Störung nicht abbrechen, sondern ein paar Mal neu versuchen
+  async function nochmalVersuchen(f, mal = 40) {
+    for (let i = 0; ; i++) {
+      try { return await f(); }
+      catch (e) { if (i >= mal || S.abbruch) throw e; status('⏳ Export kurz unterbrochen (z. B. Ruhezustand) – versuche es weiter …'); await new Promise(r => setTimeout(r, 3000)); }
+    }
+  }
   async function exportieren(o, imHintergrund) {
-    if (S.vorb) { $('ex-text').textContent = 'Bereite Videos und Stimme vor …'; await S.vorb; }
+    if (S.vorb) { $('ex-text').textContent = 'Bereite Videos und Stimme vor …'; let v; do { v = S.vorb; await v; } while (v !== S.vorb); }
     const F = S.F;
     for (const d of Object.keys(BF.videoInfo)) { const el = BF.videoInfo[d].url && BF.videoElement(d); if (el) el.pause(); }
     const w = o.breite || F.breite, h = o.hoehe || F.hoehe, fps = o.fps || F.fps;
@@ -924,7 +999,7 @@
       // Bild einpacken lassen und gleich das nächste zeichnen (toBlob nimmt sofort eine Kopie)
       const bild = alsBild();
       const vorher = unterwegs;
-      unterwegs = (async () => { const blob = await bild; await vorher; await post('/api/video/bild', blob); })();
+      unterwegs = (async () => { const blob = await bild; await vorher; await nochmalVersuchen(() => post('/api/video/bild', blob)); })();
       if (i % 2 === 1) await vorher;
       if (i % 2 === 0 || i === n - 1) {
         const verg = (performance.now() - t0) / 1000;
@@ -934,7 +1009,7 @@
     }
     await unterwegs;
     zeige(1, 'Video wird fertig verpackt …');
-    const erg = await post('/api/video/ende', {});
+    const erg = await nochmalVersuchen(() => post('/api/video/ende', {}));
     S.export = false;
     groesseAnpassen();
     if (!erg.ok) throw new Error(erg.fehler);
@@ -1000,6 +1075,8 @@ alex sagt "Wow!!"
     groesseAnpassen();
     requestAnimationFrame(schleife);
     window.BF_UI = { S, szene, exportieren, kompilieren };
+    // gespeicherten KI-Schlüssel beim Start erkennen (dann fragt die App nicht jedes Mal danach)
+    kiPruefen().then(() => { if (!S.kiBereit) kiStatus('Tipp: Mit ⚙ richtest du die KI ein. Dann schreibt „🤖 KI-Film“ ganze Filme zu jedem Thema.'); });
     if (q.get('render')) {
       // Kommandozeilen-Modus: Video ohne Fenster bauen
       const ueber = { '4k': [3840, 2160], '1080p': [1920, 1080], '720p': [1280, 720] }[info.aufl] || [null, null];

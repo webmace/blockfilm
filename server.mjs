@@ -170,14 +170,25 @@ function sprechen(text, stimme, tempo) {
     pr.proc.stdin.write(JSON.stringify(zeile) + '\n');
   });
 }
-// Ein Piper-Prozess pro Stimme bleibt geladen und liest Satz für Satz (viel schneller als jedes Mal neu starten)
+// Mehrere Piper-Prozesse pro Stimme, damit mehrere Sätze gleichzeitig eingelesen werden (4 Kerne → bis zu 3)
 const piperPool = new Map();
+const PIPER_MAX = Math.max(1, Math.min(3, os.cpus().length - 1));
 function piperProzess(datei, tempo) {
   const k = datei + '|' + tempo;
-  let pr = piperPool.get(k);
-  if (pr && !pr.tot) return pr;
-  const proc = spawn('nice', ['-n', '15', PIPER, '--model', path.join(STIMMEN, datei + '.onnx'), '--json-input', '--length_scale', String(1 / tempo), '--sentence_silence', '0.15'], { stdio: ['pipe', 'pipe', 'pipe'] });
-  pr = { proc, warte: new Map(), tot: false, puffer: '', fehler: '' };
+  const liste = (piperPool.get(k) || []).filter(p => !p.tot);
+  piperPool.set(k, liste);
+  const frei = liste.slice().sort((a, b) => a.warte.size - b.warte.size)[0];
+  if (frei && (frei.warte.size === 0 || liste.length >= PIPER_MAX)) return frei;
+  // insgesamt nie mehr als PIPER_MAX Prozesse: untätige Prozesse anderer Stimmen/Tempi beenden
+  const alle = [...piperPool.values()].flat().filter(p => !p.tot);
+  if (alle.length >= PIPER_MAX) {
+    const untaetig = alle.find(p => p.warte.size === 0 && !liste.includes(p));
+    if (untaetig) { untaetig.tot = true; try { untaetig.proc.kill(); } catch {} }
+    else if (frei) return frei;
+  }
+  // in der App mit normaler Priorität (man wartet darauf), beim Export im Hintergrund niedriger
+  const proc = spawn('nice', ['-n', renderModus ? '15' : '0', PIPER, '--model', path.join(STIMMEN, datei + '.onnx'), '--json-input', '--length_scale', String(1 / tempo), '--sentence_silence', '0.15'], { stdio: ['pipe', 'pipe', 'pipe'] });
+  const pr = { proc, warte: new Map(), tot: false, puffer: '', fehler: '' };
   proc.stdout.on('data', d => {
     pr.puffer += d.toString();
     let i;
@@ -194,12 +205,11 @@ function piperProzess(datei, tempo) {
     pr.tot = true;
     for (const w of pr.warte.values()) w.nein(new Error('Piper-Fehler: ' + pr.fehler.slice(-300)));
     pr.warte.clear();
-    piperPool.delete(k);
   });
-  piperPool.set(k, pr);
+  liste.push(pr);
   return pr;
 }
-process.on('exit', () => { for (const pr of piperPool.values()) try { pr.proc.kill(); } catch {} });
+process.on('exit', () => { for (const l of piperPool.values()) for (const pr of l) try { pr.proc.kill(); } catch {} });
 let tonDatei = null;
 
 function liste(ordner) {
@@ -295,6 +305,22 @@ async function anfrage(req, res) {
       return json(res, { ordner: MATERIAL, dateien: l });
     }
     if (p === '/api/liste') return json(res, { eigene: liste(SKRIPTE), beispiele: liste(BEISPIELE) });
+    if (p === '/api/filmliste') {
+      // gespeicherte KI-Filme (Blockfilm/Skripte/KI) und eigene Skripte für die Film-Leiste
+      const ki = liste(path.join(SKRIPTE, 'KI')).map(e => {
+        let info = {};
+        try { const z = fs.readFileSync(e.pfad, 'utf8').split('\n').find(x => x.startsWith('#KI ')); if (z) info = JSON.parse(z.slice(4)); } catch {}
+        return { pfad: e.pfad, zeit: e.zeit, thema: info.thema || e.name.replace(/\.txt$/, ''), alter: info.alter || '' };
+      });
+      return json(res, { ki, eigene: liste(SKRIPTE) });
+    }
+    if (p === '/api/filme/loeschen' && req.method === 'POST') {
+      const o = JSON.parse((await koerper(req)).toString('utf8'));
+      const f = path.resolve(String(o.pfad || ''));
+      if (!f.startsWith(path.join(SKRIPTE, 'KI') + path.sep) || !/\.txt$/.test(f)) return json(res, { ok: false, fehler: 'Nur gespeicherte KI-Filme können hier gelöscht werden.' });
+      try { fs.rmSync(f); } catch (e) { return json(res, { ok: false, fehler: e.message }); }
+      return json(res, { ok: true });
+    }
     if (p === '/api/lesen') {
       const f = pfadAus(url.searchParams.get('p'));
       const st = fs.statSync(f);
@@ -431,7 +457,7 @@ function fortschrittAus(text) {
 }
 function filmName(datei) {
   const n = path.basename(String(datei || '')).replace(/\.teil\.mp4$|\.mp4$|\.txt$/g, '');
-  const th = { geister: 'Geister / durch Wände', himmelblau: 'Warum ist der Himmel blau?', umlaufbahn: 'Warum fällt der Mond nicht herunter?', koerper: 'Wie funktioniert unser Körper?', tagundnacht: 'Tag und Nacht', schwarzesloch: 'Schwarzes Loch', herbst: 'Bunte Blätter im Herbst', klima: 'Was ist Klima?', mathe: 'Wie funktioniert Mathe?', viren: 'Viren und Krankheiten', dinos: 'Dinosaurier und Erdzeitalter', technik: 'Handys, Computer und Tablets' };
+  const th = { geister: 'Geister / durch Wände', himmelblau: 'Warum ist der Himmel blau?', umlaufbahn: 'Warum fällt der Mond nicht herunter?', koerper: 'Wie funktioniert unser Körper?', tagundnacht: 'Tag und Nacht', schwarzesloch: 'Schwarzes Loch', herbst: 'Bunte Blätter im Herbst', klima: 'Was ist Klima?', mathe: 'Wie funktioniert Mathe?', viren: 'Viren und Krankheiten', dinos: 'Dinosaurier und Erdzeitalter', erdestopp: 'Was, wenn die Erde stehen bleibt?', technik: 'Handys, Computer und Tablets' };
   return th[n] || n;
 }
 // fertige MP4 (mit +faststart) haben den Index "moov" ganz vorne; abgebrochene haben ihn nicht
@@ -473,7 +499,7 @@ async function exporteLesen() {
   const ausOrdner = path.join(VIDEOS, 'Nachtfilme');
   let warteschlange = [];
   try {
-    const reihenfolge = ['geister', 'himmelblau', 'umlaufbahn', 'koerper', 'tagundnacht', 'schwarzesloch', 'herbst', 'klima', 'mathe', 'viren', 'dinos', 'technik'];
+    const reihenfolge = ['geister', 'himmelblau', 'erdestopp', 'umlaufbahn', 'koerper', 'tagundnacht', 'schwarzesloch', 'herbst', 'klima', 'mathe', 'viren', 'dinos', 'technik'];
     const da = fs.readdirSync(NACHT_SKRIPTE).filter(f => f.endsWith('.txt')).map(f => f.slice(0, -4));
     warteschlange = reihenfolge.filter(n => da.includes(n)).map(n => ({ datei: n, name: filmName(n), fertig: fs.existsSync(path.join(ausOrdner, n + '.mp4')), laeuft: laufend.some(e => e.ziel && path.basename(e.ziel).startsWith(n + '.')) }));
   } catch {}

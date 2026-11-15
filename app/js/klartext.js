@@ -106,7 +106,14 @@
       if (neu.length && neu.every(x => x.startsWith('('))) { bericht.push({ satz: roh, ok: true, zeilen: neu }); continue; }
 
       // ---------- Fertige Themen (ganze Erklärfilme) ----------
-      const thema = /(erklaer|warum|wieso|weshalb|\bwas\b|\bwie\b|thema|zeig mir|ist es moeglich|kann man|koennen wir|geht es|mach (einen |mir einen )?film|film (ueber|zu|:))/.test(n) && Object.values(BF.THEMEN || {}).find(th => th.erkennen.test(n));
+      // Was-wäre-wenn-Fragen (Gedankenexperimente) nur mit passenden Was-wäre-wenn-Filmen beantworten
+      const genauerName = Object.values(BF.THEMEN || {}).find(th => BF.norm(th.name).replace(/[^a-z0-9]+/g, ' ').trim() === n.replace(/[^a-z0-9]+/g, ' ').trim());
+      const wasWaere = BF.istWasWaere(n);
+      const thema = genauerName || (wasWaere || /(erklaer|warum|wieso|weshalb|\bwas\b|\bwie\b|thema|zeig mir|ist es moeglich|kann man|koennen wir|geht es|mach (einen |mir einen )?film|film (ueber|zu|:))/.test(n)) && Object.values(BF.THEMEN || {}).find(th => !!th.wasWaere === wasWaere && th.erkennen.test(n));
+      if (wasWaere && !thema) {
+        bericht.push({ satz: roh, ok: false, zeilen: [], wasWaere: true, hinweis: 'Das ist eine Was-wäre-wenn-Frage – ein Gedankenexperiment! Dafür gibt es noch keinen fertigen Film. Schreib die Frage oben ins 🤖-Feld und klick „🤖 KI-Film“: Die KI spielt dann Schritt für Schritt durch, was passieren würde. Fertige Was-wäre-wenn-Filme: ' + Object.values(BF.THEMEN || {}).filter(x => x.wasWaere).map(x => '„' + x.name + '“').join(', ') + '.' });
+        continue;
+      }
       if (thema) {
         const alter = opt.alter || '3-5';
         const txt = BF.themaSkript(thema, alter);
@@ -286,6 +293,7 @@
     return { skript: alles.join('\n'), bericht };
   };
 
+  BF.istWasWaere = n => /(was\s+(passiert|passierte|geschieht|geschaehe|waere|wuerde|wird)\w*\b.{0,40}\bwenn\b|was\s+waere\s*,?\s*(wenn|ohne)|\bstell\s+(dir|euch)\s+vor\b|\bangenommen\b|gedankenexperiment|was\s+(waere|wuerde)\s+.{0,30}\b(ohne|keine?n?)\b|\bwenn\b.{0,60}\bwas\s+(dann|passiert))/.test(n);
   BF.KLARTEXT_BEISPIELE = [
     'Erkläre, warum ein schwarzes Loch schwarz ist.',
     'Erkläre, warum es Tag und Nacht gibt.',
@@ -299,6 +307,7 @@
     'Erkläre, wie Handys, Computer und Tablets funktionieren.',
     'Erkläre, wie Mathe funktioniert.',
     'Mach einen Film über Dinosaurier und die Erdzeitalter.',
+    'Was passiert, wenn die Erde plötzlich aufhört, sich zu drehen?',
     'Zeig mein Video von Sekunde 5 bis 12.',
     'Der Sprecher sagt: Hier fällt der Sand nach unten, weil er keinen Halt hat.',
     'Mach bei Sekunde 2 einen roten Kreis oben rechts mit dem Text "Sand".',

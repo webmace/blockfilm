@@ -14,6 +14,7 @@ export function einstellungenSchreiben(neu) {
   const e = Object.assign(einstellungenLesen(), neu);
   fs.mkdirSync(path.dirname(EINST), { recursive: true });
   fs.writeFileSync(EINST, JSON.stringify(e, null, 2), { mode: 0o600 });
+  try { fs.chmodSync(EINST, 0o600); } catch {} // der Schlüssel ist nur für dich lesbar
   return e;
 }
 export function kiBereit() {
@@ -37,9 +38,18 @@ So arbeitest du:
 - Recherchiere zuerst mit der Websuche (web_search) kurz die wichtigsten Fakten zum Thema, bevorzugt auf verlässlichen Seiten (Kinderlexika wie klexikon.zum.de, Wissensseiten öffentlich-rechtlicher Sender, Wikipedia, Museen, Universitäten, NASA/ESA). Zwei bis vier Suchen reichen. Übernimm nur, was mehrere Quellen bestätigen.
 - Erkläre fachlich richtig, aber so einfach, wie das Alter es verlangt. Lieber vereinfachen als falsch sein.
 - Nichts Gruseliges oder Bedrohliches für kleine Kinder. Gefährliche Dinge (Feuer, Vulkan, Weltraum) freundlich und beruhigend zeigen.
+- Was-wäre-wenn-Fragen ("Was passiert, wenn …?", "Was wäre ohne …?", "Stell dir vor …") sind Gedankenexperimente. Dann so aufbauen: 1. Kurz erklären, wie es in Wirklichkeit ist (mit Bild). 2. Sagen, dass wir uns jetzt etwas vorstellen, das in echt nicht (so) passiert. 3. Schritt für Schritt durchspielen, was die Folgen wären, jede Folge mit eigenem Bild, wissenschaftlich begründet (recherchiere, was Forscher dazu sagen; wenn man es nicht genau weiß, sag das ehrlich). 4. Bei beängstigenden Folgen für kleine Kinder beruhigen ("Keine Angst, das kann nicht passieren" – aber nur, wenn das stimmt). 5. Zum Schluss zurück zur Wirklichkeit und eine Merke-Tafel.
 - Sag nie, dass der Film, das Video oder die Stimme vom Computer gemacht ist (kein "dieser Film ist ein Computervideo", kein "ich bin eine Computerstimme").
 - Der Sprecher (Befehl "sprecher") trägt die Erklärung. Jede Sprecher-Zeile ist ein kurzer Satz. Zu jeder Aussage soll im Bild etwas passieren, gleichzeitig mit "&".
-- Nutze die 2D-Simulation (hintergrund, stern2d, planet2d, loch2d, licht2d, auge2d, rakete2d, text2d, kamera2d, umlauf2d, drehe2d, bewege2d …) für Themen aus Natur, Weltraum und Physik.
+- Nutze die 2D-Simulation mit ihren GEZEICHNETEN Bildern (Abschnitt "2D-Simulation" in der Befehlsliste): Kinder, Körper, Bäume, Pflanzen, Tiere, Dinosaurier, Keime, Geräte, Planeten, Mathe-Objekte und vieles mehr. Was es nicht als Zeichnung gibt, zeigst du mit symbol2d als Bildzeichen (z. B. symbol2d banane1 "🍌" bei 10 0 groesse 8).
+- Bildregeln (sehr wichtig, sonst sieht der Film leer aus):
+  * Zu JEDEM Sprecher-Satz ist ein passendes Bild sichtbar, das genau das zeigt, was gesagt wird. Das Bild erscheint unmittelbar VOR dem Satz, der davon spricht.
+  * Male Dinge nie aus Linien, Kurven oder Kreisen. kurve, kreis und zeiger nur, um auf etwas zu zeigen oder etwas zu markieren.
+  * Beschrifte Teile von Objekten mit text2d … an objekt … stelle oben/unten/links/rechts statt mit geschätzten zeiger-Positionen. Bei kippe2d gilt: positive Zahl = gegen den Uhrzeigersinn (auf 90 → Kopf links, Füße rechts).
+  * Jedes Kapitel beginnt mit einem passenden hintergrund (z. B. erde, zimmer, meer, weltraum, tafel) und endet damit, dass alle Objekte des Kapitels mit verstecke2d ausgeblendet werden.
+  * Auf dem Boden stehende Dinge bei y = -11, nichts Wichtiges unter y = -20 (dort stehen die Untertitel). Objekte nicht übereinander stapeln, lieber nebeneinander von x -40 bis 40.
+  * Bewegung macht Filme lebendig: bewege2d, kippe2d, kamera2d (Heranzoomen), wachsen2d, faerbe2d.
+  * Prüfe am Ende jeden Sprecher-Satz einmal: Was sieht das Kind in diesem Moment? Wenn das Bild leer ist oder nicht passt, ergänze ein Objekt oder symbol2d.
 - Nutze die 3D-Blockwelt mit freundlichen Figuren und Tieren (figur, tier, welt, himmel, baue …) für Alltagsthemen, Tiere, Gefühle und Geschichten. Mit "ohnevideo" oder "hintergrund aus" schaltest du zurück auf die 3D-Welt.
 - Benutze eine Figur namens "ich" (ohne Farben, dann trägt sie den Skin des Nutzers) als freundliche Begleitfigur, wenn es passt.
 - Benutze KEINE Befehle "video", "standbild" oder "bild" (es gibt keine Dateien) und nur Befehle, die in der Befehlsliste stehen.
@@ -63,7 +73,7 @@ function skriptAus(antwort) {
 
 // Fragt Claude nach einem Skript. vorher/aenderung/fehler: für Nachbesserungen.
 const STIL = {
-  echt: 'Stil: ECHTE WELT. Benutze ausschließlich die 2D-Simulation (hintergrund weltraum/erde/himmel/tafel/weiss, stern2d, planet2d, loch2d, licht2d, auge2d, rakete2d, text2d, kamera2d, bewege2d, umlauf2d, drehe2d) und Einblendungen (sprecher, text, tafel, formel, kreis, zeiger, kurve, notiz, diagramm, zaehler). KEINE Blockwelt: keine Befehle figur, tier, welt, block, baue, tnt, explosion, kamera (3D). Der erste Befehl nach film/musik ist "hintergrund …". Für Themen ohne Weltraum nimm hintergrund erde (Himmel und Wiese) oder weiss und erkläre mit Kreisen, Pfeilen, Kurven, Tafeln und Diagrammen.',
+  echt: 'Stil: ECHTE WELT. Benutze ausschließlich die 2D-Simulation mit ihren gezeichneten Objekten (alle Befehle aus dem Abschnitt "2D-Simulation", z. B. kind2d, baum2d, pflanze2d, dino2d, geraet2d, virus2d, koerper2d, planet2d, apfel2d) und symbol2d-Bildzeichen für alles andere, dazu Einblendungen (sprecher, text, tafel, formel, zeiger, kreis, diagramm). KEINE Blockwelt: keine Befehle figur, tier, welt, block, baue, tnt, explosion, kamera (3D). Der erste Befehl nach film ist "hintergrund …". Jeder Satz braucht ein echtes, passendes Bild; Kreise und Pfeile nur zum Hinzeigen.',
   minecraft: 'Stil: MINECRAFT. Benutze die 3D-Blockwelt mit Figuren, Tieren, Blöcken, Häusern und Effekten. Keine 2D-Simulation.',
   egal: 'Stil: Wähle selbst, was am besten passt.',
 };
@@ -73,7 +83,11 @@ export async function kiSkript({ thema, alter = '3-5', stil = 'echt', vorher = n
   const { default: Anthropic } = await import('@anthropic-ai/sdk');
   const e = einstellungenLesen();
   const client = e.apiKey ? new Anthropic({ apiKey: e.apiKey }) : new Anthropic();
-  const nachrichten = [{ role: 'user', content: `Thema: ${thema}\nZielgruppe: ${ALTER[alter] || ALTER['3-5']}\n${STIL[stil] || STIL.echt}\n\nSchreib das Blockfilm-Skript.` }];
+  // Was-wäre-wenn-Fragen werden ausführlicher: etwa 10 Minuten
+  const norm = String(thema).toLowerCase().replace(/ä/g, 'ae').replace(/ö/g, 'oe').replace(/ü/g, 'ue').replace(/ß/g, 'ss');
+  const wasWaere = /(was\s+(passiert|passierte|geschieht|waere|wuerde|wird)\w*\b.{0,40}\bwenn\b|was\s+waere\s*,?\s*(wenn|ohne)|\bstell\s+(dir|euch)\s+vor\b|\bangenommen\b|gedankenexperiment|was\s+(waere|wuerde)\s+.{0,30}\b(ohne|keine?n?)\b|\bwenn\b.{0,60}\bwas\s+(dann|passiert))/.test(norm);
+  const laenge = wasWaere ? `\nDas ist eine Was-wäre-wenn-Frage. Der Film soll ausführlicher sein als sonst: etwa 10 Minuten lang (bei 0–2 Jahren trotzdem nur 1 Minute; bei 3–5 Jahren etwa 90 bis 100 Sprecher-Sätze, ab 6 Jahren etwa 110 bis 130), in 6 bis 8 Kapiteln. Spiel mehrere Folgen und Varianten durch (z. B. plötzlich und langsam, für Menschen, Tiere, Pflanzen, Wetter) und erkläre am Anfang, wie es in Wirklichkeit ist.` : '';
+  const nachrichten = [{ role: 'user', content: `Thema: ${thema}\nZielgruppe: ${ALTER[alter] || ALTER['3-5']}\n${STIL[stil] || STIL.echt}${laenge}\n\nSchreib das Blockfilm-Skript.` }];
   if (vorher) {
     nachrichten.push({ role: 'assistant', content: '```blockfilm\n' + vorher + '```' });
     let bitte = '';

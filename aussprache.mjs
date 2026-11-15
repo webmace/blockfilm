@@ -88,6 +88,8 @@ const WOERTER = [
   [/\bQuetzalcoatlus\b/g, 'Ketsal-koatlus'], [/\bEuropasaurus\b/g, 'Europa-saurus'], [/\bRichard Owen\b/g, 'Ritschard Ouen'], [/\bSäugetiere(n)?\b/g, (m, e) => 'Säuge-tiere' + (e || '')],
   [/\b(Meso|Paläo|Käno)zoikum\b/g, (m, a) => a + 'zo-ikum'], [/\bSauropoden\b/g, 'Sauro-poden'], [/\bArgentinosaurus\b/g, 'Argentino-saurus'], [/\bTrilobiten\b/g, 'Trilo-bihten'],
   [/\bAmmoniten\b/g, 'Ammo-nihten'], [/\bTrici\b/g, 'Trizi'],
+  [/\bVollbremsung\b/g, 'Voll-bremsung'], [/\bBadewanne\b/g, 'Bade-wanne'], [/\bmonatelang\b/g, 'monate-lang'], [/\bklitzekleine(s|n|r)?\b/g, (m, e) => 'klitze-kleine' + (e || '')], [/\bGezeitenreibung\b/g, 'Gezeiten-reibung'],
+  [/\bPirouette(n)?\b/g, (m, e) => 'Piru-ette' + (e || '')], [/\bCorioliskraft\b/g, 'Korjohlis-kraft'], [/\bAstronaut(en|in|innen)?\b/g, (m, e) => 'Astro-naut' + (e || '')],
   [/\bStromkreis\b/g, 'Strom-kreis'], [/\bMobilfunk\b/g, 'Mobiel-funk'],
 ];
 

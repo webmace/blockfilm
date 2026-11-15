@@ -169,22 +169,78 @@ Fertige Erklärfilme (ein Satz reicht):
 Sätze, die verstanden werden: „Zeig mein Video von Sekunde 5 bis 12“, „in Zeitlupe“, „Der Sprecher sagt: …“, „Mach bei Sekunde 2 einen roten Kreis oben rechts“, „Pfeil auf die Mitte“, „Zoom zweifach unten links“, „Standbild für 3 Sekunden“, „Mach es als Zeichentrick“, „Tafel: Merke, Punkt 1, Punkt 2“, „Formel "E = m · c²"“, „Stoppuhr starten“, „Spannende Musik“, „Ich sage "Hallo" und winke“, „Zeig ein Sauerstoff-Atom“, „Am Ende ausblenden“.
 Strg+Klick ins Vorschaubild fügt „bei x y“ ein.
 
-## 2D-Simulation (echte Welt)
+## 2D-Simulation (echte Welt) – gezeichnete Bilder
 
+**So wird ein Film schön:** Zu JEDEM Sprecher-Satz gehört ein echtes Bild, das genau das zeigt, worüber gesprochen wird.
+Benutze die gezeichneten Objekte unten und `symbol2d` (Bildzeichen). Linien, Kreise und Pfeile (`kurve`, `kreis`, `zeiger`) sind nur zum Zeigen auf etwas, nie, um Dinge zu malen.
+Jede Szene beginnt mit einem passenden `hintergrund`. Am Ende eines Kapitels alle Objekte mit `verstecke2d` ausblenden.
+
+**Positionen:** Bildmitte ist 0 0, x geht von -50 (links) bis 50 (rechts), y von -28 (unten) bis 28 (oben). Der Boden liegt bei y = -11: Figuren, Bäume, Pflanzen, Tiere und Dinos stellst du mit `bei x -11` auf den Boden (die Position ist ihr Fußpunkt). Unter y = -20 stehen die Untertitel, dort nichts Wichtiges hinstellen.
+**Namen:** Jedes Objekt bekommt einen eigenen Namen (z. B. `banane1`). Namen dürfen keine Befehlswörter sein (nicht: links, rechts, baby, leer, fossil, skelett, gut, nah, wolke).
+**Bewegen:** `bewege2d name zu x y in 3` (Tiere laufen dabei), `kippe2d name auf 90 in 1` (drehen), `kamera2d bei x y zoom 2 in 2` (heranzoomen; danach `kamera2d bei 0 0 zoom 1 in 2`).
+**Drehen mit kippe2d:** positive Zahl = gegen den Uhrzeigersinn. Eine aufrechte Figur liegt nach `kippe2d name auf 90` mit dem Kopf nach links und den Füßen nach rechts, nach `kippe2d name auf -90` mit dem Kopf nach rechts und den Füßen nach links. Soll etwas mit den Füßen zu einem Ziel rechts zeigen, nimm also 90.
+**Beschriften:** Teile eines Objekts beschriftest du mit `text2d "Füße" an astro 4 stelle unten` (stelle: oben, unten, links, rechts, mitte – das dreht mit, wenn das Objekt gekippt ist). Das ist viel genauer als ein `zeiger`. Wenn du doch einen `zeiger` oder `kreis` brauchst (Prozent-Angaben), rechne so um: Prozent-x = 50 + x, Prozent-y = 50 − 1,78 · y.
+
+### Hintergründe
+`hintergrund erde` (Himmel und Wiese) · `weltraum` · `abend` (Sonnenuntergang) · `wueste` · `schnee` · `zimmer` (drinnen) · `mikro` (unter dem Mikroskop) · `tafel` (Schultafel) · `weiss` · `meer` (unter Wasser) · `urzeit` · `jura` · `kreide` · `staub` · `eiszeit` · `erdschichten`. Mit `hintergrund jura in 2` wird weich übergeblendet.
+
+### Bildzeichen für alles, was es nicht als Zeichnung gibt
 | Befehl | Beispiel |
 |---|---|
-| `hintergrund` | `hintergrund weltraum` (auch: erde, tafel, weiss) · `hintergrund aus` = zurück zur 3D-Welt |
-| `stern2d` | `stern2d sonne bei -40 0 groesse 9 farbe gelb` |
-| `planet2d` | `planet2d erde bei 18 0 groesse 9 art erde` (mond, mars, jupiter, venus, eis) |
-| `loch2d` | `loch2d loch bei 0 0 groesse 3 scheibe` (schwarzes Loch, verbiegt den Sternenhimmel) |
-| `kollaps2d` | `kollaps2d riese zu loch groesse 3 in 3` (Stern fällt zum schwarzen Loch zusammen) |
-| `scheibe2d` | `scheibe2d loch an in 2` (leuchtendes Gas um das Loch) |
-| `licht2d` | `licht2d von -58 0 richtung 0 anzahl 11 abstand 3.4` · `licht2d von sonne zu erde anzahl 7 faecher 6` |
-| `auge2d` | `auge2d bei 44 0 groesse 3` |
-| `rakete2d` | `rakete2d bei 0 -20 groesse 3 winkel 90` |
-| `text2d` | `text2d "Erde" an erde 4` |
-| `kamera2d` | `kamera2d bei 0 0 zoom 2 in 3` |
-| `bewege2d` / `umlauf2d` / `drehe2d` | `bewege2d rakete zu 0 30 in 3` · `umlauf2d mond um erde periode 8` · `drehe2d erde periode 6` |
-| `verstecke2d` | `verstecke2d auge` |
+| `symbol2d` | `symbol2d banane1 "🍌" bei 10 0 groesse 8` – jedes Emoji geht: 🍌 🍎 🥕 🐝 🐶 🐱 🦋 🌻 🌧️ ⚡ 🔥 💧 🚗 🚀 🏠 🏰 📱 💡 🔬 🧪 🥚 🦴 🌋 ☀️ 🌙 ⭐ 🎵 🧼 🩹 💊 … |
+| `zahl2d` | `zahl2d z1 "3 + 2 = 5" bei 0 10 groesse 8 farbe gelb` (große Zahlen und Rechnungen) |
+| `text2d` | `text2d "Banane" an banane1 5` (Schild an einem Objekt, 5 Sekunden) · `text2d "Kopf" an kind 5 stelle oben` (an eine Stelle des Objekts) |
 
-Positionen: Bildmitte ist 0 0, das Bild ist 100 Einheiten breit (bei Zoom 1).
+### Natur, Wetter, Menschen
+| Befehl | Beispiel |
+|---|---|
+| `kind2d` | `kind2d kind bei -16 -11 groesse 12` (Kind; `farbe blau` = anderes Shirt) · `niesen2d kind rechts` |
+| `koerper2d` | `koerper2d k bei 0 -26 groesse 48` (Mensch von vorne) · `zeige2d k herz` (gehirn, nerven, herz, blut, lunge, magen, darm, knochen, alles) · `essen2d k` · `winke2d k in 3` |
+| `baum2d` | `baum2d baum bei 16 -11 groesse 20 farbe gruen` · `faerbe2d baum zu gelb in 3` · `blaetterfallen2d baum anzahl 30 in 7` · `wachsen2d baum in 3` |
+| `pflanze2d` | `pflanze2d p1 art farn bei -20 -11 groesse 8` (farn, palmfarn, nadelbaum, schachtelhalm, blume, gras, busch) |
+| `blatt2d` | `blatt2d blatt bei -6 4 groesse 13 farbe gruen` (ein großes Blatt) |
+| `wolke2d` | `wolke2d w1 bei 0 14 groesse 8` (mit `regen` regnet sie) |
+| `regenbogen2d` | `regenbogen2d bogen bei 15 -11 groesse 22` |
+| `kaktus2d` / `pinguin2d` | `kaktus2d k1 bei 18 -11 groesse 9` · `pinguin2d p1 bei 14 -11 groesse 7` |
+| `thermometer2d` | `thermometer2d t bei 18 -3 groesse 14 wert 25` · `temperatur2d t auf 39 in 3` |
+| `stern2d` / `planet2d` | `stern2d sonne bei -40 14 groesse 6 farbe gelb` · `planet2d erde bei 18 0 groesse 9 art erde` (mond, mars, jupiter, venus, eis) |
+| `licht2d` | `licht2d von sonne zu baum anzahl 5 faecher 4` (Lichtstrahlen) |
+| `luft2d` / `atome2d` | `luft2d luft bei 10 8 breite 40 hoehe 22 anzahl 50` (Luftteilchen) · `atome2d a bei 6 -2 spalten 4 zeilen 6 groesse 0.8 farbe orange` |
+| `wand2d` / `geist2d` | `wand2d wand bei 6 -11 hoehe 24 breite 5` (mit `fenster` aus Glas) · `geist2d geist bei -36 2 groesse 6` |
+| `vulkan2d` | `vulkan2d v bei -26 -11 groesse 18` · `ausbruch2d v in 6` |
+| `meteor2d` | `meteor2d stein von -45 30 nach 30 -12 in 6` (Asteroid mit Einschlag) |
+| `rakete2d` / `auge2d` | `rakete2d r bei 0 -20 groesse 3 winkel 90` · `auge2d a bei 44 0 groesse 3` |
+
+### Tiere und Dinosaurier
+| Befehl | Beispiel |
+|---|---|
+| `dino2d` | `dino2d rex art trex bei -18 -11 groesse 14` – Arten: trex, allosaurus, raptor, spinosaurus, klein, plateosaurus, parasaurolophus, langhals, diplodocus, triceratops, stegosaurus, ankylosaurus, dimetrodon, urvogel, mammut; im Wasser oder in der Luft (Position = Körpermitte): plesiosaurus, ichthyosaurus, mosasaurus, fisch, qualle, trilobit, flugsaurier. Zusätze: `links` (schaut nach links), `baby`, `skelett` |
+| `bruelle2d` / `blick2d` | `bruelle2d rex` · `blick2d rex links` |
+| `zeitleiste2d` | `zeitleiste2d zl bei 0 10 breite 86` (Erdzeitalter; `nurdinos`, `zahlen`) · `zeitpunkt2d zl auf jura in 1.5` |
+| `kontinente2d` | `kontinente2d k bei 0 0 groesse 18 art pangaea` (pangaea, jura, kreide, heute) · `drift2d k auf heute in 5` |
+
+### Keime und Körper
+| Befehl | Beispiel |
+|---|---|
+| `virus2d` / `bakterie2d` | `virus2d v1 bei 18 4 groesse 3` · `bakterie2d b1 bei -18 4 groesse 5` (`gut` = freundlich) · `teilen2d b1 in 3` |
+| `zelle2d` | `zelle2d z bei 14 0 groesse 13` · `vermehren2d z anzahl 14 in 6` · `platzen2d z` |
+| `abwehr2d` / `antikoerper2d` | `abwehr2d polizei bei -20 2 groesse 6` · `antikoerper2d ak bei 4 -8 groesse 1.6` |
+| `blasen2d` | `blasen2d bei -10 -6 anzahl 16 in 5` (Seifenblasen) |
+
+### Technik
+| Befehl | Beispiel |
+|---|---|
+| `geraet2d` | `geraet2d handy bei -16 2 groesse 18 art handy` (handy, tablet, laptop, pc) · `bildschirm2d handy zeigt foto` (apps, foto, anruf, spiel, video, nachricht, internet, code, aus) |
+| `bauteil2d` | `bauteil2d chip bei 10 4 groesse 9 art chip` (chip, speicher, kamera, lautsprecher, platine, router) |
+| `akku2d` / `bits2d` / `pixel2d` | `akku2d akku bei 0 0 groesse 18 wert 10` (`temperatur2d akku auf 100 in 5` lädt ihn) · `bits2d b bei 0 0 groesse 5 wert 01000001` · `pixel2d px bei 0 2 groesse 24` (`nah` = rote, grüne, blaue Lämpchen) |
+| `mast2d` / `wellen2d` | `mast2d m bei 0 -11 groesse 26` · `wellen2d von handy nach m in 8` (Funkwellen) · `daten2d paeckchen von a nach b in 8` |
+
+### Mathe
+| Befehl | Beispiel |
+|---|---|
+| `apfel2d` / `reihe2d` | `apfel2d a1 bei -16 0 groesse 5` · `reihe2d s anzahl 12 bei -15 13 abstand 9 zeile 4 art stern groesse 3` (Namen s1 … s12) |
+| `form2d` | `form2d f bei 0 0 groesse 6 art dreieck farbe gelb` (kreis, dreieck, quadrat, rechteck, sechseck, stern, wuerfel, kugel) |
+| `pizza2d` | `pizza2d pizza bei 0 0 groesse 12 teile 4` · `pizzaweg2d pizza anzahl 1` |
+
+### Ausblenden
+`verstecke2d name` blendet ein Objekt aus. Mit `hintergrund aus` geht es zurück zur 3D-Welt.

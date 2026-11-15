@@ -152,8 +152,14 @@
     if (txt === null) throw new Error('So: text2d "Sonne" an stern');
     const d = w.dauerOderZahl(4);
     w.fuell();
+    const stelle = BF.norm(w.optWort(['stelle', 'am', 'an_der']) || '');
     let an;
     if (w.pk() && W.obj[w.pk()]) an = { obj: w.wort() }; else an = { p: [w.zahl(), w.zahl()] };
+    if (stelle) {
+      const S2 = { oben: 'oben', kopf: 'oben', unten: 'unten', fuss: 'unten', fuesse: 'unten', boden: 'unten', links: 'links', rechts: 'rechts', mitte: 'mitte', bauch: 'mitte' }[stelle];
+      if (!S2) throw new Error('stelle: oben, unten, links, rechts oder mitte');
+      an.stelle = S2;
+    }
     W.texte.push({ t0: t, t1: t + d, text: txt, an });
     return 0;
   };
@@ -800,7 +806,7 @@
       const ein = clamp((t - o.t0) / 0.4, 0, 1) * clamp((o.t1 - t) / 0.4, 0, 1);
       ctx.save();
       ctx.globalAlpha = o.kollaps ? 1 : ein;
-      if (o.kipp) { const wk = wertBei(o.kipp, t, 0); if (wk) { ctx.translate(sx, sy); ctx.rotate(wk * Math.PI / 180); ctx.translate(-sx, -sy); } }
+      if (o.kipp) { const wk = wertBei(o.kipp, t, 0); if (wk) { ctx.translate(sx, sy); ctx.rotate(-wk * Math.PI / 180); ctx.translate(-sx, -sy); } } // positiv = gegen den Uhrzeigersinn
       if (o.typ === 'stern') {
         let f = o.farbe;
         if (o.kollaps && t >= o.kollaps.t0) {
@@ -1090,13 +1096,33 @@
     // Beschriftungen
     for (const tx of F.w2d.texte) {
       if (t < tx.t0 || t >= tx.t1) continue;
-      let p = tx.an.p, rr = 0;
-      if (tx.an.obj) { const o = F.w2d.obj[tx.an.obj]; if (!o) continue; p = pos(F, o, t); rr = (o.typ === 'loch' ? o.r * 2.8 : o.r * 1.2) * s; }
+      let p = tx.an.p, rr = 0, ziel = null, richtung = [0, 1];
+      if (tx.an.obj) {
+        const o = F.w2d.obj[tx.an.obj]; if (!o) continue; p = pos(F, o, t); rr = (o.typ === 'loch' ? o.r * 2.8 : o.r * 1.2) * s;
+        if (tx.an.stelle) {
+          // Stelle am Objekt (dreht mit, wenn das Objekt gekippt ist)
+          const amBoden = ['kind', 'baum', 'pflanze', 'kaktus', 'pinguin', 'wand', 'mast', 'vulkan', 'koerper'].includes(o.typ) || (o.typ === 'dino' && !['plesiosaurus', 'ichthyosaurus', 'mosasaurus', 'flugsaurier', 'trilobit', 'fisch', 'qualle'].includes(o.art));
+          // am Boden stehende Objekte: Position = Füße, Höhe H; schwebende: Position = Mitte
+          const H = o.r * (o.typ === 'kind' ? 1.12 : 1), h2 = o.r * 0.55, mitteY = amBoden ? H * 0.5 : 0;
+          const off = amBoden
+            ? { oben: [0, H * 0.97], unten: [0, H * 0.03], links: [-H * 0.3, H * 0.5], rechts: [H * 0.3, H * 0.5], mitte: [0, H * 0.5] }[tx.an.stelle]
+            : { oben: [0, h2 * 0.9], unten: [0, -h2 * 0.95], links: [-h2 * 0.8, 0], rechts: [h2 * 0.8, 0], mitte: [0, 0] }[tx.an.stelle];
+          const wk = o.kipp ? wertBei(o.kipp, t, 0) * Math.PI / 180 : 0;
+          const ox = off[0] * Math.cos(wk) - off[1] * Math.sin(wk), oy = off[0] * Math.sin(wk) + off[1] * Math.cos(wk);
+          ziel = [p[0] + ox, p[1] + oy];
+          // Richtung vom Mittelpunkt des Objekts zur Stelle (bei "mitte": nach oben)
+          const mx = p[0] - mitteY * Math.sin(wk), my = p[1] + mitteY * Math.cos(wk);
+          const dx = ziel[0] - mx, dy = ziel[1] - my, lang = Math.hypot(dx, dy);
+          richtung = lang > 0.01 ? [dx / lang, dy / lang] : [0, 1];
+        }
+      }
       const ein = clamp((t - tx.t0) / 0.3, 0, 1) * clamp((tx.t1 - t) / 0.3, 0, 1);
       ctx.save(); ctx.globalAlpha = ein;
-      const x = X(p[0]), y = Y(p[1]) - rr - 46 * E;
+      let x = X(p[0]), y = Y(p[1]) - rr - 46 * E, x0 = X(p[0]), y0 = Y(p[1]) - rr;
+      if (ziel) { x0 = X(ziel[0]); y0 = Y(ziel[1]); x = x0 + richtung[0] * 90 * E; y = y0 - richtung[1] * 90 * E; }
       ctx.strokeStyle = 'rgba(255,255,255,0.8)'; ctx.lineWidth = 2.5 * E;
-      ctx.beginPath(); ctx.moveTo(X(p[0]), Y(p[1]) - rr); ctx.lineTo(x, y + 18 * E); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(x0, y0); ctx.lineTo(x, y + (ziel ? 0 : 18 * E)); ctx.stroke();
+      if (ziel) { ctx.fillStyle = '#ffe27a'; ctx.beginPath(); ctx.arc(x0, y0, 6 * E, 0, 7); ctx.fill(); }
       ctx.font = `bold ${Math.round(34 * E)}px "Segoe UI", "Noto Sans", sans-serif`;
       ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
       const b = ctx.measureText(tx.text).width + 30 * E;

@@ -141,3 +141,17 @@ h3 { font-size: 13px; color: var(--leise); margin: 14px 0 6px; text-transform: u
 .ex-liste span { font-size: 13px; padding: 3px 8px; border-radius: 12px; background: #23272e; border: 1px solid var(--rand); }
 .ex-liste span.fertig { border-color: var(--gruen); color: #9fe0a0; }
 .ex-liste span.laeuft { border-color: #e8a33a; color: #f0c070; }
+
+#filmleiste { display: flex; align-items: center; gap: 8px; padding: 6px 12px; border-bottom: 1px solid var(--rand); background: #16181c; overflow: hidden; }
+#filmleiste .fl-titel { font-weight: 700; white-space: nowrap; font-size: 14px; }
+#flListe { display: flex; gap: 6px; overflow-x: auto; scrollbar-width: thin; padding-bottom: 2px; flex: 1; }
+#flListe button { white-space: nowrap; font-size: 13px; padding: 4px 10px; border-radius: 14px; background: #22262d; border: 1px solid var(--rand); display: inline-flex; align-items: center; gap: 4px; flex: 0 0 auto; }
+#flListe button:hover { background: #2c313a; }
+#flListe button.aktiv { border-color: var(--gruen); background: #1f3326; }
+#flListe button.ki { border-style: dashed; }
+#flListe .fl-weg { opacity: .55; margin-left: 2px; padding: 0 3px; border-radius: 8px; }
+#flListe .fl-weg:hover { opacity: 1; background: #5a2a2a; }
+#flListe .fl-trenner { width: 1px; background: var(--rand); margin: 2px 4px; flex: 0 0 auto; }
+#flListe::-webkit-scrollbar { height: 5px; }
+#flListe::-webkit-scrollbar-track { background: transparent; }
+#flListe::-webkit-scrollbar-thumb { background: #3a3f48; border-radius: 3px; }
