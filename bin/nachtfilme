@@ -9,7 +9,7 @@ mkdir -p "$AUS"
 LOG="$AUS/protokoll.txt"
 echo "=== Start $(date '+%d.%m.%Y %H:%M') ===" >> "$LOG"
 # kürzeste Filme zuerst, damit früh etwas fertig ist
-for n in geister himmelblau erdestopp umlaufbahn koerper tagundnacht schwarzesloch herbst klima mathe viren dinos technik; do
+for n in himmelblau geister erdestopp umlaufbahn koerper tagundnacht schwarzesloch herbst klima mathe viren dinos technik; do
   f="$SKRIPTE/$n.txt"; ziel="$AUS/$n.mp4"
   [ -f "$f" ] || continue
   if [ -s "$ziel" ] && ffprobe -v error "$ziel" >/dev/null 2>&1; then echo "$n: schon fertig" >> "$LOG"; continue; fi
@@ -32,6 +32,23 @@ for n in geister himmelblau erdestopp umlaufbahn koerper tagundnacht schwarzeslo
     notify-send "Blockfilm" "Film fertig: $n" 2>/dev/null
   else
     echo "$(date '+%H:%M') $n: FEHLER – $(tail -c 300 "$AUS/.letzter-lauf.txt" | tr '\r' '\n' | tail -2)" >> "$LOG"
+  fi
+done
+# danach alle KI-Filme (~/Blockfilm/Skripte/KI) → ~/Videos/Blockfilm/KI/<Name>.mp4
+KIAUS="$HOME/Videos/Blockfilm/KI"; mkdir -p "$KIAUS"
+for f in "$HOME/Blockfilm/Skripte/KI/"*.txt; do
+  [ -f "$f" ] || continue
+  n="$(basename "$f" .txt)"; ziel="$KIAUS/$n.mp4"
+  if [ -s "$ziel" ] && [ "$ziel" -nt "$f" ] && ffprobe -v error "$ziel" >/dev/null 2>&1; then echo "KI $n: schon fertig" >> "$LOG"; continue; fi
+  while pgrep -f -- "server.mjs --render" >/dev/null; do sleep 60; done
+  echo "$(date '+%H:%M') KI $n: startet" >> "$LOG"
+  rm -f "$KIAUS/$n.teil.mp4"
+  if nice -n 19 ionice -c 3 systemd-inhibit --what=sleep:idle --who=Blockfilm --why="Filme werden gespeichert" \
+       "$HIER/bin/blockfilm" --render "$f" -o "$KIAUS/$n.teil.mp4" > "$AUS/.letzter-lauf.txt" 2>&1 \
+     && ffprobe -v error "$KIAUS/$n.teil.mp4" >/dev/null 2>&1; then
+    mv "$KIAUS/$n.teil.mp4" "$ziel"; echo "$(date '+%H:%M') KI $n: fertig" >> "$LOG"; notify-send "Blockfilm" "KI-Film fertig: $n" 2>/dev/null
+  else
+    echo "$(date '+%H:%M') KI $n: FEHLER – $(tail -c 300 "$AUS/.letzter-lauf.txt" | tr '\r' '\n' | tail -2)" >> "$LOG"
   fi
 done
 echo "=== Ende $(date '+%d.%m.%Y %H:%M') ===" >> "$LOG"

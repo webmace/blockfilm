@@ -375,7 +375,9 @@ async function hfStarten(o) {
   if (!process.env.PRODUCER_BROWSER_GPU_MODE) process.env.PRODUCER_BROWSER_GPU_MODE = 'auto';
   const worker = Number(process.env.BF_HF_WORKER) || Math.max(1, Math.min(3, os.cpus().length - 1));
   const { createRenderJob, executeRenderJob } = await import('@hyperframes/producer');
-  const job = createRenderJob({ fps: { num: fps, den: 1 }, quality: o.qualitaet === 'entwurf' ? 'draft' : 'standard', format: 'mp4', workers: worker });
+  // höchste Qualität: Bilder verlustfrei aufnehmen (JPEG 100) und mit sehr niedriger CRF kodieren (BF_HF_CRF, Standard 12)
+  const entwurf = o.qualitaet === 'entwurf';
+  const job = createRenderJob({ fps: { num: fps, den: 1 }, quality: entwurf ? 'draft' : 'high', ...(entwurf ? {} : { crf: Number(process.env.BF_HF_CRF) || 12 }), format: 'mp4', workers: worker });
   const abbruch = new AbortController();
   const J = hfJob = { ziel, ordner, abbruch, start: Date.now(), anteil: 0, text: 'Starte …', bild: null, bilder: null, fertig: false, ok: null, fehler: null, abgebrochen: false };
   executeRenderJob(job, ordner, ziel, (j, msg) => {
@@ -734,13 +736,13 @@ async function exporteLesen() {
   const ausOrdner = path.join(VIDEOS, 'Nachtfilme');
   let warteschlange = [];
   try {
-    const reihenfolge = ['geister', 'himmelblau', 'erdestopp', 'umlaufbahn', 'koerper', 'tagundnacht', 'schwarzesloch', 'herbst', 'klima', 'mathe', 'viren', 'dinos', 'technik'];
+    const reihenfolge = ['himmelblau', 'geister', 'erdestopp', 'umlaufbahn', 'koerper', 'tagundnacht', 'schwarzesloch', 'herbst', 'klima', 'mathe', 'viren', 'dinos', 'technik'];
     const da = fs.readdirSync(NACHT_SKRIPTE).filter(f => f.endsWith('.txt')).map(f => f.slice(0, -4));
     warteschlange = reihenfolge.filter(n => da.includes(n)).map(n => ({ datei: n, name: filmName(n), fertig: fs.existsSync(path.join(ausOrdner, n + '.mp4')), laeuft: laufend.some(e => e.ziel && path.basename(e.ziel).startsWith(n + '.')) }));
   } catch {}
   // 4. fertige Videos
   const fertig = [];
-  for (const ordner of [VIDEOS, ausOrdner]) {
+  for (const ordner of [VIDEOS, ausOrdner, path.join(VIDEOS, 'KI')]) {
     try {
       for (const f of fs.readdirSync(ordner)) {
         if (!f.endsWith('.mp4') || f.endsWith('.teil.mp4')) continue;
