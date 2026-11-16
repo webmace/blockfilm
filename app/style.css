@@ -99,9 +99,9 @@ h3 { font-size: 13px; color: var(--leise); margin: 14px 0 6px; text-transform: u
 .bericht .leer { color: var(--leise); padding: 14px; }
 
 .ki-box { padding: 12px 14px 8px; background: linear-gradient(180deg, #1d2333, #181c26); border-bottom: 1px solid var(--rand); }
-.ki-zeile { display: flex; gap: 8px; align-items: center; }
+.ki-zeile { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
 .ki-symbol { font-size: 22px; }
-.ki-zeile input { flex: 1; min-width: 120px; background: #10131a; border: 1px solid #3a4560; color: var(--text); border-radius: 8px; padding: 10px 12px; font-size: 15px; outline: none; }
+.ki-zeile input { flex: 1; min-width: 220px; background: #10131a; border: 1px solid #3a4560; color: var(--text); border-radius: 8px; padding: 10px 12px; font-size: 15px; outline: none; }
 .ki-zeile input:focus { border-color: var(--blau); }
 .ki-status { font-size: 13px; color: var(--leise); min-height: 18px; padding-top: 6px; }
 .ki-status.fehler { color: #ffb4ae; }
