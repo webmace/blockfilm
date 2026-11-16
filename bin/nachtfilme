@@ -7,14 +7,14 @@ SKRIPTE="$HOME/Blockfilm/Nachtfilme"
 AUS="$HOME/Videos/Blockfilm/Nachtfilme"
 mkdir -p "$AUS"
 LOG="$AUS/protokoll.txt"
-# falls gerade schon ein Film gespeichert wird: warten, bis er fertig ist
-while pgrep -f -- "server.mjs --render" >/dev/null; do sleep 60; done
 echo "=== Start $(date '+%d.%m.%Y %H:%M') ===" >> "$LOG"
 # kürzeste Filme zuerst, damit früh etwas fertig ist
 for n in geister himmelblau erdestopp umlaufbahn koerper tagundnacht schwarzesloch herbst klima mathe viren dinos technik; do
   f="$SKRIPTE/$n.txt"; ziel="$AUS/$n.mp4"
   [ -f "$f" ] || continue
   if [ -s "$ziel" ] && ffprobe -v error "$ziel" >/dev/null 2>&1; then echo "$n: schon fertig" >> "$LOG"; continue; fi
+  # falls gerade ein anderer Film gespeichert wird (z. B. aus der Warteschlange der App): warten, bis er fertig ist
+  while pgrep -f -- "server.mjs --render" >/dev/null; do sleep 60; done
   echo "$(date '+%H:%M') $n: startet" >> "$LOG"
   rm -f "$AUS/$n.teil.mp4"
   ok=0
