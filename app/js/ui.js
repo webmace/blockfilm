@@ -161,7 +161,11 @@
   // ---------- KI-Regisseur ----------
   S.ki = null;
   S.kiBereit = false;
-  const kiStatus = (txt, art = '') => { const el = $('kiStatus'); el.textContent = txt; el.className = 'ki-status ' + art; };
+  const kiStatus = (txt, art = '') => {
+    const el = $('kiStatus'); el.textContent = txt; el.className = 'ki-status ' + art;
+    // Tagesvideo ohne Fenster: dem Server melden, was die KI gerade macht (für 📋 Exporte)
+    if (S.tagesModus && Date.now() - (S.kiGemeldet || 0) > 5000) { S.kiGemeldet = Date.now(); post('/api/fortschritt', { phase: 'ki', text: txt.replace(/^\W+/, '').replace(/\s*\([^)]*\)\s*$/, '') }).catch(() => {}); }
+  };
   function kiAnsicht() {
     const an = !!S.ki;
     $('kiFertig').hidden = !an;
@@ -190,9 +194,14 @@
     $('ytTrennen').hidden = !st.verbunden;
     $('tvAn').checked = !!st.tagesvideo.an; $('tvZeit').value = st.tagesvideo.uhrzeit; $('tvAlter').value = st.tagesvideo.alter;
     S.tagesOrdner = st.ordner;
+    api('/api/exporte').then(d => {
+      const e = d.laufend.find(x => x.tages);
+      $('tvLaeuft').innerHTML = e ? `⏳ <b>${esc(e.name)}</b><br>${tagesInfo(e)}<br><span style="opacity:.7">${esc(e.text)}</span>` : '';
+    }).catch(() => {});
     $('tvListe').innerHTML = st.letzte.length ? '<b>Letzte Tagesvideos:</b><br>' + st.letzte.map(v => `${new Date(v.datum).toLocaleDateString('de-DE')}: ${esc(v.titel || v.thema || '')} ${v.ordner ? `<a data-url="${esc(v.ordner)}">📁 Ordner</a>` : ''} ${v.url ? `<a data-url="${esc(v.url)}">▶ auf YouTube</a>` : ''}${v.fehler ? ` <span style="color:#f88">⚠ ${esc(v.fehler)}</span>` : ''}`).join('<br>') : '';
   }
   $('ytEinst').onclick = () => { $('ytDialog').hidden = false; ytZeigen(); };
+  setInterval(() => { if (!$('ytDialog').hidden) ytZeigen(); }, 10000);
   $('ytCloud').onclick = e => { e.preventDefault(); post('/api/oeffnen', { pfad: 'https://console.cloud.google.com/projectcreate' }); };
   $('tvOrdner').onclick = () => { if (S.tagesOrdner) post('/api/oeffnen', { pfad: S.tagesOrdner }); };
   $('tvListe').addEventListener('click', e => { const a = e.target.closest('a[data-url]'); if (a) post('/api/oeffnen', { pfad: a.dataset.url }); });
@@ -1130,6 +1139,12 @@
   // ---------- Übersicht aller Exporte (auch Hintergrund und Nacht-Export) ----------
   const WTAGE = ['So', 'Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa'];
   const zeitText = ms => { const d = new Date(ms); return `${WTAGE[d.getDay()]} ${String(d.getDate()).padStart(2, '0')}.${String(d.getMonth() + 1).padStart(2, '0')}. ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`; };
+  const uhrzeit = ms => new Date(ms).toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' });
+  // Tagesvideo: Schritt, Prozent beim Speichern und ungefähre Fertig-Zeit
+  function tagesInfo(e) {
+    const schritt = ['', 'Drehbuch', 'Speichern', 'Vorschaubild + Text'][e.schritt] || '';
+    return `Schritt ${e.schritt}/3 ${schritt}${e.schritt === 2 && e.anteil != null ? ' ' + Math.round(e.anteil * 100) + ' %' : ''}${e.fertigUm ? ' · fertig etwa um ' + uhrzeit(e.fertigUm) + ' Uhr' : ''}`;
+  }
   async function exporteAktualisieren() {
     let d;
     try { d = await api('/api/exporte'); } catch { return; }
@@ -1139,8 +1154,8 @@
     // läuft gerade
     $('exLaufend').innerHTML = n ? d.laufend.map(e => `<div class="ex-zeile">
         <span class="ex-name">${esc(e.name)}</span>
-        <div class="balken"><div style="width:${e.anteil != null ? (e.anteil * 100).toFixed(1) : 0}%"></div></div>
-        <span class="ex-info">${e.anteil != null ? Math.round(e.anteil * 100) + ' % · ' : ''}${e.rest ? 'noch etwa ' + esc(e.rest) : esc(e.text || 'startet …')}</span>
+        <div class="balken"><div style="width:${e.tages ? ({ 1: 5, 2: 10 + 87 * (e.anteil || 0), 3: 98 }[e.schritt] || 0).toFixed(1) : e.anteil != null ? (e.anteil * 100).toFixed(1) : 0}%"></div></div>
+        <span class="ex-info"${e.tages ? ` title="${esc(e.text)}"` : ''}>${e.tages ? tagesInfo(e) : `${e.anteil != null ? Math.round(e.anteil * 100) + ' % · ' : ''}${e.rest ? 'noch etwa ' + esc(e.rest) : esc(e.text || 'startet …')}`}</span>
         ${e.pid ? `<button data-stopp="${e.pid}" title="Diesen Export abbrechen">⏹ Stopp</button>` : '<button data-zeige="1">Anzeigen</button>'}
       </div>`).join('') : '<div class="ex-leer">Gerade wird nichts gespeichert.</div>';
     // Nacht-Export

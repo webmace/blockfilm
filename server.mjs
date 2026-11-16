@@ -419,6 +419,25 @@ const TAGES_LISTE = path.join(HOME, 'Blockfilm', 'tagesvideos.json');
 let tagesAuftrag = null;
 function tagesEinstellungen() { return Object.assign({ an: false, alter: '3-5', uhrzeit: '02:00' }, einstellungenLesen().tagesvideo || {}); }
 function tagesListe() { try { return JSON.parse(fs.readFileSync(TAGES_LISTE, 'utf8')); } catch { return []; } }
+// Fortschritt des laufenden Tagesvideos in drei Schritten, mit geschätzter Fertig-Zeit (für 📋 Exporte und den Dialog 📺)
+const tagesLauf = { schritt: 1, text: 'Die KI sucht ein Thema …', thema: null, schrittStart: Date.now(), renderStart: null };
+const TAGES_SCHRITTE = ['', 'KI schreibt das Drehbuch', 'Film wird gespeichert', 'Vorschaubild und YouTube-Text'];
+function tagesRenderMinuten() {
+  const aufl = extraAufl || '4k';
+  const l = tagesListe().filter(x => x.renderMin && (x.aufl || '4k') === aufl).slice(-5).map(x => x.renderMin).sort((a, b) => a - b);
+  return l.length ? l[l.length >> 1] : { '4k': 75, '1080p': 25, '720p': 12 }[aufl] || 75;
+}
+function tagesStatusSchreiben() {
+  const jetzt = Date.now(), r = fortschrittAus(tagesLauf.text), render = tagesRenderMinuten() * 60000;
+  let rest;
+  if (tagesLauf.schritt === 1) rest = Math.max(2 * 60000, 15 * 60000 - (jetzt - tagesLauf.schrittStart)) + render + 60000;
+  else if (tagesLauf.schritt === 2) rest = (r.anteil > 0.02 && tagesLauf.renderStart ? (jetzt - tagesLauf.renderStart) * (1 - r.anteil) / r.anteil : render) + 60000;
+  else rest = 60000;
+  const st = { pid: process.pid, tages: true, name: 'Tagesvideo' + (tagesLauf.thema ? ': ' + tagesLauf.thema : ''), ziel: tagesAuftrag && tagesAuftrag.aus, schritt: tagesLauf.schritt, schritte: 3,
+    text: `Schritt ${tagesLauf.schritt} von 3: ${TAGES_SCHRITTE[tagesLauf.schritt]} · ${tagesLauf.text}`, start: renderStart, fertigUm: jetzt + rest, zeit: jetzt };
+  try { fs.mkdirSync(EXPORT_STATUS, { recursive: true }); fs.writeFileSync(path.join(EXPORT_STATUS, process.pid + '.json'), JSON.stringify(st)); } catch {}
+}
+function tagesSchritt(n, text) { if (n !== tagesLauf.schritt) tagesLauf.schrittStart = Date.now(); tagesLauf.schritt = n; tagesLauf.text = text; tagesStatusSchreiben(); }
 function alleKiThemen() {
   try { return fs.readdirSync(path.join(SKRIPTE, 'KI')).filter(f => f.endsWith('.txt')).map(f => f.replace(/ \([^)]*\)\.txt$/, '')); } catch { return []; }
 }
@@ -448,7 +467,7 @@ function youtubeTextDatei(ordner, text, video, bild) {
   return datei;
 }
 async function tagesAbschliessen(o) {
-  const eintrag = { datum: new Date().toISOString(), thema: o.thema || (tagesAuftrag && tagesAuftrag.thema), alter: o.alter, skript: o.skript || null, video: o.video || null };
+  const eintrag = { datum: new Date().toISOString(), thema: o.thema || (tagesAuftrag && tagesAuftrag.thema), alter: o.alter, aufl: extraAufl || '4k', renderMin: tagesLauf.renderStart ? Math.round((Date.now() - tagesLauf.renderStart) / 60000) : null, skript: o.skript || null, video: o.video || null };
   const merken = () => { const l = tagesListe(); l.push(eintrag); fs.writeFileSync(TAGES_LISTE, JSON.stringify(l, null, 2)); };
   if (!o.ok || !o.video || !fs.existsSync(o.video)) { eintrag.fehler = o.fehler || 'kein Video'; merken(); console.log('Fehler: ' + eintrag.fehler); benachrichtigen('Tagesvideo ging nicht: ' + eintrag.fehler); return 1; }
   try {
@@ -712,7 +731,10 @@ async function anfrage(req, res) {
     }
     if (p === '/api/fortschritt' && req.method === 'POST') {
       const o = JSON.parse((await koerper(req)).toString('utf8'));
-      if (renderModus) {
+      if (tagesModus) {
+        if (o.phase === 'ki') tagesSchritt(1, o.text);
+        else { if (!tagesLauf.renderStart && /Bild \d+ von/.test(o.text)) tagesLauf.renderStart = Date.now(); tagesSchritt(2, o.text); process.stdout.write(`\r${o.text}            `); }
+      } else if (renderModus) {
         process.stdout.write(`\r${o.text}            `);
         try { fs.mkdirSync(EXPORT_STATUS, { recursive: true }); fs.writeFileSync(path.join(EXPORT_STATUS, process.pid + '.json'), JSON.stringify({ pid: process.pid, skript: skriptDatei, ziel: ausDatei, text: o.text, start: renderStart, zeit: Date.now() })); } catch {}
       }
@@ -764,11 +786,13 @@ async function anfrage(req, res) {
       tagesAuftrag = { thema, alter: t.alter, aus: path.join(VIDEOS, 'Tagesvideos', `${stempel} ${name}`, `${name}.mp4`) };
       fs.mkdirSync(path.dirname(tagesAuftrag.aus), { recursive: true });
       console.log('Thema: ' + thema);
+      tagesLauf.thema = thema; tagesSchritt(1, 'Die KI schreibt das Drehbuch …');
       return json(res, Object.assign({ ok: true }, tagesAuftrag));
     }
     if (p === '/api/tagesvideo/fertig' && req.method === 'POST') {
       const o = JSON.parse((await koerper(req)).toString('utf8'));
       json(res, { ok: true });
+      tagesSchritt(3, 'wird geschrieben …');
       tagesAbschliessen(o).then(c => beenden(c), e => { console.error(e); beenden(1); });
       return;
     }
@@ -829,13 +853,14 @@ async function exporteLesen() {
   const ps = await ausfuehren('ps', ['-eo', 'pid=,etimes=,args=']);
   for (const z of ps.split('\n')) {
     const m = /^\s*(\d+)\s+(\d+)\s+(.*)$/.exec(z);
-    if (!m || !/server\.mjs/.test(m[3]) || !/--render|--tagesvideo/.test(m[3])) continue;
+    if (!m || !/server\.mjs/.test(m[3]) || !/--render|--tagesvideo/.test(m[3]) || /sperre/.test(m[3])) continue;
     const pid = +m[1], args = m[3].split(/\s+/);
     const oi = args.indexOf('-o');
     const ziel = oi >= 0 ? args[oi + 1] : null;
     const skript = args.includes('--render') ? args[args.indexOf('--render') + 1] : 'Tagesvideo';
-    let text = '';
-    try { text = JSON.parse(fs.readFileSync(path.join(EXPORT_STATUS, pid + '.json'), 'utf8')).text; } catch {}
+    let text = '', st = {};
+    try { st = JSON.parse(fs.readFileSync(path.join(EXPORT_STATUS, pid + '.json'), 'utf8')); text = st.text || ''; } catch {}
+    if (st.tages) { laufend.push({ pid, art: 'hintergrund', tages: true, name: st.name, ziel: st.ziel, seit: +m[2], text, schritt: st.schritt, fertigUm: st.fertigUm, ...fortschrittAus(text) }); continue; }
     if (!text && ziel) {
       const ordner = path.dirname(ziel), name = path.basename(ziel).replace(/\.teil\.mp4$|\.mp4$/, '');
       for (const log of [path.join(ordner, '.' + name + '-lauf.txt'), path.join(ordner, '.letzter-lauf.txt')]) {
@@ -902,6 +927,7 @@ server.listen(PORT, '127.0.0.1', () => {
   if (renderModus) {
     if (!skriptDatei && !tagesModus) { console.error('Bitte ein Skript angeben: blockfilm --render mein-film.txt'); process.exit(2); }
     console.log(tagesModus ? 'Blockfilm macht das Tagesvideo …' : `Blockfilm rendert ${skriptDatei} …`);
+    if (tagesModus) { tagesStatusSchreiben(); setInterval(tagesStatusSchreiben, 20000).unref(); }
     const profil = fs.mkdtempSync(path.join(os.tmpdir(), 'blockfilm-render-'));
     browser = spawn('chromium', ['--headless=new', '--no-first-run', '--no-default-browser-check', `--user-data-dir=${profil}`, ...(process.env.BF_SOFTWARE ? ['--use-angle=swiftshader', '--enable-unsafe-swiftshader'] : ['--use-angle=gl', '--enable-gpu', '--ignore-gpu-blocklist']), '--disable-background-timer-throttling', '--disable-renderer-backgrounding', `http://127.0.0.1:${port}/?render=1${tagesModus ? '&tagesvideo=1' : ''}`], { stdio: 'ignore' });
     browser.on('exit', () => { fs.rmSync(profil, { recursive: true, force: true }); });
