@@ -484,7 +484,8 @@ ${HF.SKRIPTE.map(s => `<script src="${basis}${s}"></script>`).join('\n')}
       }
       document.body.classList.add('vorschaubild');
       window.__bfZeige(t);
-      const text = String(V.text || F.titel || '').trim();
+      let text = String(V.text || F.titel || '').trim();
+      if (!V.text && /^(warum|wieso|weshalb|wie|was|wo|wer|wann|welche|kann|können|gibt)\b/i.test(text) && !/[?!.]$/.test(text)) text += '?';
       const sch = stil.schrift, band = (stil.text && stil.text.band) || stil.palette.blau;
       const lang = text.length, fs = W * (lang <= 14 ? 0.085 : lang <= 24 ? 0.068 : lang <= 40 ? 0.055 : 0.045);
       const d = document.createElement('div');
