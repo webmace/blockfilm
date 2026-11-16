@@ -118,7 +118,7 @@
   // ---------- Körper mit Organen (Ursprung = Füße, Höhe 1 = o.r; y nach oben = negative SVG-y) ----------
   // Ein Kind von vorne mit kurzer Hose. Organe liegen dort, wo sie wirklich sitzen (von vorne gesehen:
   // das Herz und der Magen liegen auf der Bildseite rechts, denn das ist die linke Seite des Kindes).
-  const ORGANE = ['knochen', 'nerven', 'gehirn', 'lunge', 'blut', 'herz', 'magen', 'darm'];
+  const ORGANE = ['knochen', 'nerven', 'gehirn', 'magen', 'darm', 'lunge', 'blut', 'herz']; // Zeichenreihenfolge: Speiseröhre hinter Lunge und Herz
   const P2 = (x, y) => `${f3(x)} ${f3(-y)}`;
   const glied = (a, b, d, f, cls = '') => `<line${cls ? ` class="${cls}"` : ''} x1="${f3(a[0])}" y1="${f3(-a[1])}" x2="${f3(b[0])}" y2="${f3(-b[1])}" stroke="${f}" stroke-width="${f3(d)}" stroke-linecap="round"/>`;
   const weg = pts => 'M' + pts.map(q => P2(q[0], q[1])).join(' L');
@@ -126,12 +126,18 @@
   const pfad = (...teile) => teile.map(p => (typeof p === 'string' ? p : P2(p[0], p[1]))).join(' ');
   const spiegel = pts => pts.map(p => (typeof p === 'string' ? p : [-p[0], p[1]]));
   const SCHULTER = [-0.128, 0.75], ARM_LANG = 0.3;
-  const armBei = aw => [SCHULTER[0] - Math.sin(aw) * ARM_LANG, SCHULTER[1] - Math.cos(aw) * ARM_LANG];
-  const ARM_RUHE = armBei(0.14), HAND_R = [0.168, 0.455];
+  // Arm mit Ellbogen: [Ellbogen, Hand]. wink 0 = hängt locker, 1 = Oberarm zur Seite, Unterarm nach oben und wedelt
+  const seg = (von, a, l) => [von[0] - Math.sin(a) * l, von[1] - Math.cos(a) * l];
+  const armPose = (wink, t) => {
+    const ao = lerp(0.14, 1.85, wink), au = ao + lerp(0, 1.15 + Math.sin(t * 9) * 0.35, wink);
+    const ell = seg(SCHULTER, ao, ARM_LANG * 0.5);
+    return [ell, seg(ell, au, ARM_LANG * 0.5)];
+  };
+  const ARM_RUHE = armPose(0, 0), HAND_R = [0.168, 0.455];
   // Nerven: Rückenmark, Arme bis in die Hände, Beine bis in die Füße (alle beginnen am Rückenmark)
   const NERVEN = arm => [
     [[0, 0.875], [0, 0.82], [0, 0.47]],
-    [[0, 0.745], [-0.1, 0.748], [-0.128, 0.742], arm],
+    [[0, 0.745], [-0.1, 0.748], [-0.128, 0.742], ...arm],
     [[0, 0.745], [0.1, 0.748], [0.128, 0.742], HAND_R],
     [[0, 0.47], [-0.035, 0.44], [-0.058, 0.3], [-0.056, 0.06], [-0.088, 0.024]],
     [[0, 0.47], [0.035, 0.44], [0.058, 0.3], [0.056, 0.06], [0.088, 0.024]],
@@ -142,7 +148,7 @@
     [HERZ, [0.012, 0.74], [0.018, 0.8], [0.026, 0.835]],
     [HERZ, [-0.012, 0.74], [-0.018, 0.8], [-0.026, 0.835]],
     [HERZ, [0.06, 0.735], [0.128, 0.742], HAND_R],
-    [HERZ, [-0.04, 0.735], [-0.128, 0.742], [arm[0], arm[1] + 0.01]],
+    [HERZ, [-0.04, 0.735], [-0.128, 0.742], [arm[0][0], arm[0][1] + 0.008], [arm[1][0], arm[1][1] + 0.01]],
     [HERZ, [0.006, 0.6], [0.004, 0.47], [-0.04, 0.43], [-0.062, 0.25], [-0.06, 0.05]],
     [HERZ, [0.006, 0.6], [0.004, 0.47], [0.04, 0.43], [0.062, 0.25], [0.06, 0.05]],
   ];
@@ -181,9 +187,9 @@
     s += `<circle cx="0" cy="-0.545" r="0.006" fill="${dunkelHaut}"/>`;
     // kurze Hose
     const hosePfad = pfad('M', [-0.124, 0.505], 'L', [0.124, 0.505], 'L', [0.121, 0.36], 'L', [0.02, 0.36], 'L', [0, 0.41], 'L', [-0.02, 0.36], 'L', [-0.121, 0.36], 'Z');
-    s += `<path d="${hosePfad}" fill="${hose}"/><path d="${hosePfad}" fill="${hoseS}" clip-path="url(#${cid})"/><rect x="-0.124" y="-0.505" width="0.248" height="0.022" fill="${hoseS}"/>`;
+    s += `<g class="hose"><path d="${hosePfad}" fill="${hose}"/><path d="${hosePfad}" fill="${hoseS}" clip-path="url(#${cid})"/><rect x="-0.124" y="-0.505" width="0.248" height="0.022" fill="${hoseS}"/></g>`;
     // vorderer Arm (winkt) mit Hand
-    s += glied(SCHULTER, ARM_RUHE, 0.056, haut, 'arm') + `<circle class="hand" cx="${f3(ARM_RUHE[0])}" cy="${f3(-ARM_RUHE[1])}" r="0.032" fill="${haut}"/>`;
+    s += glied(SCHULTER, ARM_RUHE[0], 0.056, haut, 'armO') + glied(ARM_RUHE[0], ARM_RUHE[1], 0.05, haut, 'armU') + `<circle class="hand" cx="${f3(ARM_RUHE[1][0])}" cy="${f3(-ARM_RUHE[1][1])}" r="0.032" fill="${haut}"/>`;
     // Kopf mit Ohren, Haaren und Gesicht
     s += ell(-0.079, -0.875, 0.016, 0.022, haut) + ell(0.079, -0.875, 0.016, 0.022, schatten);
     s += ell(0, -0.885, 0.078, 0.088, schatten) + ell(-0.008, -0.885, 0.07, 0.086, haut);
@@ -202,7 +208,7 @@
     for (let i = 0; i < 5; i++) { const y = 0.735 - i * 0.025; for (const sg of [-1, 1]) kn += `<path d="${pfad('M', [0, y], 'Q', [sg * 0.115, y + 0.012], [sg * 0.1, y - 0.04])}" stroke="${W}" stroke-width="0.009" stroke-linecap="round" fill="none"/>`; }
     kn += `<path d="${pfad('M', [-0.1, 0.49], 'C', [-0.06, 0.5], [-0.03, 0.47], [0, 0.47], 'C', [0.03, 0.47], [0.06, 0.5], [0.1, 0.49], 'C', [0.1, 0.45], [0.06, 0.42], [0.03, 0.425], 'L', [0, 0.44], 'L', [-0.03, 0.425], 'C', [-0.06, 0.42], [-0.1, 0.45], [-0.1, 0.49], 'Z')}" fill="${W}"/>`;
     for (const sg of [-1, 1]) kn += glied([sg * 0.062, 0.44], [sg * 0.06, 0.255], 0.016, W) + `<circle cx="${f3(sg * 0.06)}" cy="-0.25" r="0.013" fill="${W}"/>` + glied([sg * 0.06, 0.245], [sg * 0.056, 0.06], 0.014, W);
-    kn += glied([0.128, 0.745], [lerp(0.128, HAND_R[0], 0.9), lerp(0.745, HAND_R[1], 0.9)], 0.013, W) + `<line class="armKnochen" stroke="${W}" stroke-width="0.013" stroke-linecap="round"/>`;
+    kn += glied([0.128, 0.745], [lerp(0.128, HAND_R[0], 0.9), lerp(0.745, HAND_R[1], 0.9)], 0.013, W) + `<path class="armKnochen" stroke="${W}" stroke-width="0.013" stroke-linecap="round" stroke-linejoin="round" fill="none"/>`;
     O.knochen = kn;
     // Nerven: gelbe Leitungen mit Lichtpunkten, die Nachrichten zum Kopf und zurück tragen
     const nervStatisch = [0.72, 0.68, 0.64, 0.6, 0.56].map(y => weg([[0, y], [-0.09, y - 0.025]]) + ' ' + weg([[0, y], [0.09, y - 0.025]])).join(' ')
@@ -220,8 +226,8 @@
     const lungeR = pfad('M', [-0.024, 0.75], 'C', [-0.06, 0.772], [-0.112, 0.75], [-0.117, 0.68], 'C', [-0.121, 0.63], [-0.112, 0.605], [-0.082, 0.6], 'C', [-0.05, 0.598], [-0.03, 0.608], [-0.022, 0.628], 'Z');
     const lungeL = pfad('M', [0.024, 0.75], 'C', [0.06, 0.772], [0.112, 0.75], [0.117, 0.68], 'C', [0.121, 0.63], [0.112, 0.605], [0.082, 0.6], 'C', [0.062, 0.6], [0.054, 0.62], [0.05, 0.638], 'C', [0.044, 0.66], [0.028, 0.66], [0.026, 0.69], 'Z');
     O.lunge = `<g>${glied([0, 0.81], [0, 0.73], 0.013, '#e9b0b8')}${glied([0, 0.73], [-0.035, 0.705], 0.009, '#e9b0b8')}${glied([0, 0.73], [0.035, 0.705], 0.009, '#e9b0b8')}`
-      + `<g class="fluegel" data-cx="-0.07" data-cy="-0.68"><path d="${lungeR}" fill="#f38a9a"/><path d="${pfad('M', [-0.04, 0.735], 'C', [-0.08, 0.75], [-0.1, 0.72], [-0.1, 0.68])}" stroke="#ffb3be" stroke-width="0.008" stroke-linecap="round" fill="none"/></g>`
-      + `<g class="fluegel" data-cx="0.07" data-cy="-0.68"><path d="${lungeL}" fill="#f07f91"/><path d="${pfad('M', [0.045, 0.735], 'C', [0.08, 0.75], [0.1, 0.72], [0.1, 0.68])}" stroke="#ffb3be" stroke-width="0.008" stroke-linecap="round" fill="none"/></g></g>`;
+      + `<g transform="scale(0.9 1)"><g class="fluegel" data-cx="-0.07" data-cy="-0.68"><path d="${lungeR}" fill="#f38a9a"/><path d="${pfad('M', [-0.04, 0.735], 'C', [-0.08, 0.75], [-0.1, 0.72], [-0.1, 0.68])}" stroke="#ffb3be" stroke-width="0.008" stroke-linecap="round" fill="none"/></g>`
+      + `<g class="fluegel" data-cx="0.07" data-cy="-0.68"><path d="${lungeL}" fill="#f07f91"/><path d="${pfad('M', [0.045, 0.735], 'C', [0.08, 0.75], [0.1, 0.72], [0.1, 0.68])}" stroke="#ffb3be" stroke-width="0.008" stroke-linecap="round" fill="none"/></g></g></g>`;
     // Blut: Adern (rot) und Venen (blau) mit Blutkörperchen
     O.blut = `<g>${BLUT(ARM_RUHE).map((_, i) => `<path class="bw${i}r" d="" stroke="${P.rot}" stroke-opacity="0.65" stroke-width="0.005" stroke-linejoin="round" fill="none"/><path class="bw${i}b" d="" stroke="${P.blau}" stroke-opacity="0.65" stroke-width="0.005" stroke-linejoin="round" fill="none"/>`).join('')}${Array.from({ length: BLUT(ARM_RUHE).length * 8 }, (_, i) => `<circle class="bp" r="0.008" fill="${i % 8 < 4 ? P.rot : P.blau}"/>`).join('')}</g>`;
     // Herz: zwischen den Lungenflügeln, etwas zur linken Körperseite, mit Hauptschlagader
@@ -231,8 +237,8 @@
       + `<path transform="translate(${HERZ[0]} ${-HERZ[1]}) rotate(-20) scale(0.09)" d="M-0.3 -0.3 C-0.35 -0.1 -0.25 0.05 -0.15 0.12" stroke="rgba(255,255,255,0.45)" stroke-width="0.09" stroke-linecap="round" fill="none"/></g>`;
     // Magen: Speiseröhre und ein Magen in J-Form unter dem Herzen; daneben die Leber
     O.magen = `<g>${ell(-0.052, -0.58, 0.058, 0.032, '#c9705f', ` transform="rotate(-8 -0.052 -0.58)"`)}${glied([0.004, 0.83], [0.012, 0.6], 0.011, '#f0a888')}`
-      + `<path d="${pfad('M', [0.006, 0.605], 'C', [0.004, 0.58], [0.03, 0.6], [0.055, 0.598], 'C', [0.097, 0.596], [0.103, 0.555], [0.088, 0.535], 'C', [0.072, 0.515], [0.03, 0.52], [0.016, 0.535], 'C', [0.006, 0.546], [0.012, 0.56], [0.022, 0.566], 'C', [0.01, 0.574], [-0.006, 0.585], [-0.004, 0.605], 'Z')}" fill="#f5a885"/>`
-      + `<path d="${pfad('M', [0.035, 0.585], 'C', [0.06, 0.59], [0.08, 0.575], [0.082, 0.56])}" stroke="#ffc9ad" stroke-width="0.006" stroke-linecap="round" fill="none"/></g>`;
+      + `<path d="${pfad('M', [0.006, 0.605], 'C', [0.004, 0.58], [0.03, 0.6], [0.055, 0.598], 'C', [0.097, 0.596], [0.103, 0.555], [0.088, 0.535], 'C', [0.072, 0.515], [0.03, 0.52], [0.016, 0.535], 'C', [0.006, 0.546], [0.012, 0.56], [0.022, 0.566], 'C', [0.01, 0.574], [-0.006, 0.585], [-0.004, 0.605], 'Z')}" fill="#ef8466" stroke="#c4583f" stroke-width="0.004"/>`
+      + `<path d="${pfad('M', [0.035, 0.585], 'C', [0.06, 0.59], [0.08, 0.575], [0.082, 0.56])}" stroke="#ffb59a" stroke-width="0.006" stroke-linecap="round" fill="none"/></g>`;
     // Darm: Dickdarm als Rahmen, Dünndarm als Schlangenlinie darin
     O.darm = `<g fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="${pfad('M', [-0.07, 0.43], 'L', [-0.078, 0.515], 'Q', [-0.078, 0.535], [-0.058, 0.535], 'L', [0.058, 0.535], 'Q', [0.078, 0.535], [0.078, 0.515], 'L', [0.072, 0.445], 'Q', [0.064, 0.425], [0.02, 0.428])}" stroke="#d98466" stroke-width="0.022"/>`
       + `<path d="${weg(DARM)}" stroke="#f4ae94" stroke-width="0.013"/><path d="${weg(DARM)}" stroke="#ffcdb8" stroke-width="0.004"/></g>`;
@@ -243,7 +249,7 @@
   BW.koerper = (el, o, t, F, q, I) => {
     const nN = NERVEN(ARM_RUHE).length, nB = BLUT(ARM_RUHE).length;
     const c = el._bf || (el._bf = {
-      arm: el.querySelector('.arm'), hand: el.querySelector('.hand'), armK: el.querySelector('.armKnochen'), organe: [...el.querySelectorAll('.organ')],
+      armO: el.querySelector('.armO'), armU: el.querySelector('.armU'), hose: el.querySelector('.hose'), hand: el.querySelector('.hand'), armK: el.querySelector('.armKnochen'), organe: [...el.querySelectorAll('.organ')],
       nw: Array.from({ length: nN }, (_, i) => el.querySelector('.nw' + i)), ns: Array.from({ length: nN }, (_, i) => el.querySelector('.ns' + i)), nh: Array.from({ length: nN }, (_, i) => el.querySelector('.nh' + i)), nf: el.querySelector('.nf'),
       bw: Array.from({ length: nB }, (_, i) => [el.querySelector(`.bw${i}r`), el.querySelector(`.bw${i}b`)]), bp: [...el.querySelectorAll('.bp')],
       herz: el.querySelector('.herzG'), lunge: [...el.querySelectorAll('.fluegel')], essen: el.querySelector('.essen'),
@@ -251,14 +257,16 @@
     // Winken
     let wink = 0;
     for (const wk of o.winken) if (t >= wk.t0 && t < wk.t1) wink = Math.min(1, (t - wk.t0) / 0.4, (wk.t1 - t) / 0.4);
-    const arm = armBei(lerp(0.14, 2.45 + Math.sin(t * 9) * 0.3, wink));
+    const arm = armPose(wink, t), [ell, hand] = arm;
     const setz = (l, a, b) => { l.setAttribute('x1', f3(a[0])); l.setAttribute('y1', f3(-a[1])); l.setAttribute('x2', f3(b[0])); l.setAttribute('y2', f3(-b[1])); };
-    setz(c.arm, SCHULTER, arm);
-    if (c.hand) { c.hand.setAttribute('cx', f3(arm[0])); c.hand.setAttribute('cy', f3(-arm[1])); }
-    if (c.armK) setz(c.armK, [SCHULTER[0], SCHULTER[1] - 0.005], [lerp(SCHULTER[0], arm[0], 0.9), lerp(SCHULTER[1], arm[1], 0.9)]);
+    setz(c.armO, SCHULTER, ell); setz(c.armU, ell, hand);
+    if (c.hand) { c.hand.setAttribute('cx', f3(hand[0])); c.hand.setAttribute('cy', f3(-hand[1])); }
+    if (c.armK) c.armK.setAttribute('d', weg([[SCHULTER[0], SCHULTER[1] - 0.005], ell, [lerp(ell[0], hand[0], 0.85), lerp(ell[1], hand[1], 0.85)]]));
     // Sichtbarkeit der Organe
     const sicht = {};
     for (const g of c.organe) { const n = g.dataset.organ, v = I.wertBei(o.organe[n] || [], t, 0); sicht[n] = v; g.setAttribute('opacity', f3(v)); }
+    // wie beim Röntgenbild: die Hose wird durchsichtig, solange der Darm zu sehen ist
+    if (c.hose) c.hose.setAttribute('opacity', f3(1 - 0.7 * (sicht.darm || 0)));
     if (sicht.nerven > 0.01) {
       NERVEN(arm).forEach((w, i) => {
         c.nw[i].setAttribute('d', weg(w));
@@ -268,7 +276,7 @@
         const p = aufWeg(w, u);
         for (const e of [c.ns[i], c.nh[i]]) { e.setAttribute('cx', f3(p[0])); e.setAttribute('cy', f3(-p[1])); }
       });
-      if (c.nf) c.nf.setAttribute('d', fingerZweige(SCHULTER, arm));
+      if (c.nf) c.nf.setAttribute('d', fingerZweige(ell, hand));
     }
     if (sicht.blut > 0.01) {
       let n = 0;
