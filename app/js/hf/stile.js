@@ -58,7 +58,7 @@
       name: 'Spielplatz', alter: '3-5',
       palette: { rot: '#ff4f5e', orange: '#ffb21d', gelb: '#ffe03a', gruen: '#22d660', tuerkis: '#1fd6c0', blau: '#2b6bff', lila: '#8a5cff', pink: '#ff5cae', braun: '#8b4a2b', weiss: '#ffffff', grau: '#9fb0c8', schwarz: '#1d2340' },
       hg: {
-        himmel: ['#8cf7d6', '#d2ffef'], boden: ['#21d65f', '#1bbd52', '#159a43'], berge: ['#a9f7dc', '#7fe8c4'],
+        himmel: ['#5cc4ff', '#c8eeff'], boden: ['#21d65f', '#1bbd52', '#159a43'], berge: ['#a9f7dc', '#7fe8c4'],
         all: ['#1b2370', '#0d123f'], nebel: ['#5a4cff', '#ff4fa0'], abend: ['#4b4fd6', '#ff6f91', '#ffb84a'],
         wueste: ['#ffe08a', '#ffbb3a', '#f09a2a'], schnee: ['#a8dcff', '#ffffff', '#d8ecff'], zimmer: ['#ffe2b8', '#ffc77a', '#d98a4a'],
         mikro: ['#ffc8de', '#ff9cc2'], tafel: ['#178a6b', '#106f55'], meer: ['#2bb8f5', '#1565c8', '#0d3f8f'], urzeit: ['#a8f7d2', '#24e070', '#ffb21d'],
@@ -72,7 +72,7 @@
       name: 'Abenteuer', alter: '6-9',
       palette: { rot: '#ff3d6e', orange: '#ff9a1f', gelb: '#ffd21f', gruen: '#1fe08a', tuerkis: '#16d9e0', blau: '#2f7bff', lila: '#7b4dff', pink: '#ff4fc8', braun: '#7a3f2a', weiss: '#ffffff', grau: '#93a3c0', schwarz: '#171c38' },
       hg: {
-        himmel: ['#ffe97a', '#fff6c2'], boden: ['#3fe0b0', '#27c79a', '#1aa580'], berge: ['#ff9ad8', '#e77ad0'],
+        himmel: ['#5fb8ff', '#d2efff'], boden: ['#3fe0b0', '#27c79a', '#1aa580'], berge: ['#ff9ad8', '#e77ad0'],
         all: ['#161d63', '#0a0e36'], nebel: ['#4c3cff', '#ff3d9a'], abend: ['#3a3fc8', '#ff5a8a', '#ffb03a'],
         wueste: ['#ffd77a', '#ffad2a', '#e8851f'], schnee: ['#9fd2ff', '#ffffff', '#cfe6ff'], zimmer: ['#ffe0c2', '#ffb98a', '#d07a4a'],
         mikro: ['#ffb8e0', '#ff86c0'], tafel: ['#155e7a', '#0f4a61'], meer: ['#1fb0f0', '#125bc0', '#0a347f'], urzeit: ['#b8ffd8', '#21e06e', '#ffaa16'],

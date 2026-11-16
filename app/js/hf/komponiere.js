@@ -499,13 +499,26 @@ ${HF.SKRIPTE.map(s => `<script src="${basis}${s}"></script>`).join('\n')}
       window.__bfZeige(t);
       const film = document.getElementById('film');
       const fr = film.getBoundingClientRect(), sk = fr.width / W;
+      // sichtbarer Inhalt einer Grafik (SVG-Felder sind oft viel größer als das, was man sieht)
+      const inhaltRect = el => {
+        const g = el.querySelector('svg,img,.zahl') || el;
+        if (g.tagName.toLowerCase() !== 'svg') return g.getBoundingClientRect();
+        let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
+        for (const k of g.children) {
+          if (/^(defs|clippath|lineargradient|radialgradient|filter|mask|style)$/i.test(k.tagName)) continue;
+          const r = k.getBoundingClientRect();
+          if (r.width < 0.5 && r.height < 0.5) continue;
+          x0 = Math.min(x0, r.left); y0 = Math.min(y0, r.top); x1 = Math.max(x1, r.right); y1 = Math.max(y1, r.bottom);
+        }
+        return x1 > x0 ? { left: x0, top: y0, right: x1, bottom: y1, width: x1 - x0, height: y1 - y0 } : g.getBoundingClientRect();
+      };
       // Hauptmotiv: das größte sichtbare Ding, das zum Titel passt (Glib nur, wenn sonst nichts da ist)
       let motiv = null, bestM = 0;
       for (const e of P.objekte) {
         if (!(e.t0 + 0.3 <= t && t < e.t1) || (e.o.typ === 'zahl' && !e.o.ohneRand)) continue; // Schrift ist kein Motiv
         const el = document.getElementById(e.id);
         if (!el || getComputedStyle(el).display === 'none' || getComputedStyle(el).visibility === 'hidden') continue;
-        const g = el.querySelector('svg,img,.zahl') || el, r = g.getBoundingClientRect();
+        const r = inhaltRect(el);
         if (r.width < 3 || r.height < 3) continue;
         const k = { x0: (r.left - fr.left) / sk, y0: (r.top - fr.top) / sk, x1: (r.right - fr.left) / sk, y1: (r.bottom - fr.top) / sk };
         const sx0 = Math.max(0, k.x0), sx1 = Math.min(W, k.x1), sy0 = Math.max(0, k.y0), sy1 = Math.min(H, k.y1);
@@ -576,7 +589,7 @@ ${HF.SKRIPTE.map(s => `<script src="${basis}${s}"></script>`).join('\n')}
       for (const e of P.objekte) {
         const el = document.getElementById(e.id);
         if (!el || !(e.t0 + 0.3 <= t && t < e.t1)) continue;
-        const g = el.querySelector('svg,img,.zahl') || el, r = g.getBoundingClientRect();
+        const r = inhaltRect(el);
         if (r.width < 3 || r.height < 3) continue;
         const x0 = (r.left - fr.left) / sk, x1 = (r.right - fr.left) / sk, y0 = (r.top - fr.top) / sk, y1 = (r.bottom - fr.top) / sk; // schon mit Zoom
         const ganz = (x1 - x0) * (y1 - y0), drin = Math.max(0, Math.min(W, x1) - Math.max(0, x0)) * Math.max(0, Math.min(H, y1) - Math.max(0, y0));
