@@ -10,14 +10,18 @@ button:hover, select:hover, .knopf:hover { border-color: #4b5263; background: #2
 button.haupt { background: var(--gruen2); border-color: var(--gruen); color: #fff; font-weight: 600; }
 button.haupt:hover { background: var(--gruen); }
 button:disabled { opacity: .5; cursor: default; }
-header { height: 50px; display: flex; align-items: center; gap: 8px; padding: 0 12px; background: var(--panel); border-bottom: 1px solid var(--rand); }
+header { min-height: 50px; display: flex; flex-wrap: wrap; align-items: center; gap: 6px 8px; padding: 6px 12px; background: var(--panel); border-bottom: 1px solid var(--rand); }
+header button, header .knopf { white-space: nowrap; }
+@media (max-width: 1250px) { header .info, header .dateiname { display: none; } }
 .logo { font-weight: 800; font-size: 17px; display: flex; align-items: center; gap: 8px; margin-right: 10px; letter-spacing: .3px; }
 .wuerfel { width: 20px; height: 20px; background: linear-gradient(#6aa83a 0 35%, #866043 35%); box-shadow: inset -3px -3px 0 rgba(0,0,0,.25); image-rendering: pixelated; }
 .dateiname { color: var(--leise); margin-left: 6px; }
 .dateiname.geaendert::after { content: " •"; color: var(--gelb); }
 .platz { flex: 1; }
 .info { color: var(--leise); font-size: 12px; margin-right: 6px; }
-main { display: flex; height: calc(100% - 50px); }
+main { display: flex; flex: 1 1 auto; min-height: 0; }
+body { display: flex; flex-direction: column; }
+body > header, body > nav { flex: none; }
 .links { width: 44%; min-width: 360px; display: flex; flex-direction: column; border-right: 1px solid var(--rand); }
 .rechts { flex: 1; display: flex; flex-direction: column; min-width: 0; }
 .editor { flex: 1; display: flex; overflow: hidden; background: #14161a; position: relative; }
