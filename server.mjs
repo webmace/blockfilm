@@ -746,7 +746,7 @@ async function anfrage(req, res) {
       return json(res, { ok: true, timer: await tagesTimerAn() });
     }
     if (p === '/api/tagesvideo/jetzt' && req.method === 'POST') {
-      spawn('systemd-run', ['--user', '--unit=blockfilm-tagesvideo-jetzt-' + Date.now(), path.join(HIER, 'bin', 'tagesvideo')], { stdio: 'ignore', detached: true }).unref();
+      spawn('systemd-run', ['--user', '--unit=blockfilm-tagesvideo-jetzt-' + Date.now(), path.join(HIER, 'bin', 'tagesvideo'), '--sofort'], { stdio: 'ignore', detached: true }).unref();
       return json(res, { ok: true });
     }
     if (p === '/api/tagesvideo/auftrag') {

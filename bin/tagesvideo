@@ -1,10 +1,17 @@
 #!/usr/bin/env bash
 # Blockfilm: jeden Tag ein Video. Die KI sucht ein Thema, schreibt den Film (mit Regie- und Aussprache-Prüfung),
-# der Film wird in 4K gespeichert und privat auf YouTube hochgeladen. Videos: ~/Videos/Blockfilm/Tagesvideos/
+# der Film wird in 4K gespeichert, dazu Vorschaubild und YouTube.txt. Videos: ~/Videos/Blockfilm/Tagesvideos/<Datum> <Thema>/
+# --sofort: nicht auf den Nacht-Export warten (nur ein gerade laufender Film darf weiterlaufen; danach warten die anderen)
 HIER="$(cd "$(dirname "$(readlink -f "$0")")/.." && pwd)"
 LOG="$HOME/Videos/Blockfilm/Tagesvideos/protokoll.txt"; mkdir -p "$(dirname "$LOG")"
-# nicht gleichzeitig mit anderen Exporten (Nacht-Export, Warteschlange)
-while systemctl --user is-active -q blockfilm-nachtfilme.service || pgrep -f -- "server.mjs --(render|tagesvideo)" >/dev/null; do sleep 120; done
+if [ "$1" != "--sofort" ]; then
+  # nicht gleichzeitig mit anderen Exporten (Nacht-Export, Warteschlange)
+  while systemctl --user is-active -q blockfilm-nachtfilme.service || pgrep -f -- "server.mjs --(render|tagesvideo)" >/dev/null; do sleep 120; done
+fi
+# Sperre: bin/nachtfilme und bin/nachbessern warten, solange ein Prozess "server.mjs --render…" heißt
+bash -c 'exec -a "blockfilm-sperre server.mjs --render-sperre" sleep infinity' &
+SPERRE=$!
+trap 'kill $SPERRE 2>/dev/null' EXIT
 echo "=== $(date '+%d.%m.%Y %H:%M') Tagesvideo startet" >> "$LOG"
 nice -n 15 ionice -c 3 systemd-inhibit --what=sleep:idle --who=Blockfilm --why="Tagesvideo wird gemacht" \
   "$HIER/bin/blockfilm" --tagesvideo >> "$LOG" 2>&1
