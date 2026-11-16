@@ -838,7 +838,7 @@ async function exporteLesen() {
   } catch {}
   // 4. fertige Videos
   const fertig = [];
-  for (const ordner of [VIDEOS, ausOrdner, path.join(VIDEOS, 'KI')]) {
+  for (const ordner of [VIDEOS, ausOrdner, path.join(VIDEOS, 'KI'), path.join(VIDEOS, 'Tagesvideos')]) {
     try {
       for (const f of fs.readdirSync(ordner)) {
         if (!f.endsWith('.mp4') || f.endsWith('.teil.mp4')) continue;
