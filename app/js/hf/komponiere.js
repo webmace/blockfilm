@@ -74,7 +74,7 @@
       const t0 = Math.max(0, tx.t0), t1 = Math.min(D, tx.t1);
       if (t1 > t0 + 1e-3) schilder.push({ id: 's' + i, tx, t0, t1 });
     });
-    return { D, W, H, stil, hg, objekte, portiert, texte, ueber, ueberSet, schilder, hgKann };
+    return { D, W, H, stil, hg, objekte, portiert, texte, ueber, ueberSet, schilder, hgKann, mitLoch };
   };
 
   // ---------- Markup ----------
@@ -214,8 +214,11 @@ html,body{margin:0;padding:0;background:#000;overflow:hidden}
       const ebenen = HF.hintergrund(b.art, stil, W, H, 101 + i, { ohneSonne: b.ohneSonne }) || [];
       teile.push(clip(b.id, 'hg', b.t0, b.t1, ebenen.map((e, k) => `<div class="ebene" id="${b.id}e${k}" data-par="${e.par}"><svg viewBox="${-W} ${-H / 2} ${3 * W} ${2 * H}" preserveAspectRatio="none">${e.svg}</svg></div>`).join('')));
     });
+    // Mit schwarzem Loch malt der alte Zeichner den Weltraum (Gravitationslinse) – dann liegt seine Leinwand unter den Dingen, sonst darüber
+    const leinwandMarkup = () => `<canvas id="leinwand" class="clip" data-start="0" data-duration="${D}" data-track-index="${spur++}" width="${W}" height="${H}"></canvas>`;
+    if (P.mitLoch) teile.push(leinwandMarkup());
     for (const e of P.objekte) teile.push(clip(e.id, 'obj', e.t0, e.t1, `<div class="pos" id="${e.id}p"><div class="pop" id="${e.id}q">${objektMarkup(e, stil, s0)}</div></div>`));
-    teile.push(`<canvas id="leinwand" class="clip" data-start="0" data-duration="${D}" data-track-index="${spur++}" width="${W}" height="${H}"></canvas>`);
+    if (!P.mitLoch) teile.push(leinwandMarkup());
     for (const e of P.schilder) teile.push(clip(e.id, 'schilde', e.t0, e.t1, `<svg class="sl" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}"><line id="${e.id}l" stroke="#ffffff" stroke-opacity="0.85" stroke-linecap="round"/><circle id="${e.id}c" r="0" fill="${stil.palette.gelb}"/></svg><div class="schild" id="${e.id}b"><span>${esc(stil.schrift.versal ? String(e.tx.text).toUpperCase() : e.tx.text)}</span></div>`));
     for (const e of P.ueber) teile.push(clip(e.id, 'uebl', e.t0, e.t1, ueberMarkup(e, stil)));
     for (const e of P.texte) teile.push(clip(e.id, 'txt ' + e.art + (e.tx.spannung ? ' spannung sp-' + e.tx.spannung : ''), e.t0, e.t1, textMarkup(e, stil)));
@@ -499,7 +502,7 @@ ${HF.SKRIPTE.map(s => `<script src="${basis}${s}"></script>`).join('\n')}
       // Hauptmotiv: das größte sichtbare Ding, das zum Titel passt (Glib nur, wenn sonst nichts da ist)
       let motiv = null, bestM = 0;
       for (const e of P.objekte) {
-        if (!(e.t0 + 0.3 <= t && t < e.t1)) continue;
+        if (!(e.t0 + 0.3 <= t && t < e.t1) || (e.o.typ === 'zahl' && !e.o.ohneRand)) continue; // Schrift ist kein Motiv
         const el = document.getElementById(e.id);
         if (!el || getComputedStyle(el).display === 'none' || getComputedStyle(el).visibility === 'hidden') continue;
         const g = el.querySelector('svg,img,.zahl') || el, r = g.getBoundingClientRect();
@@ -509,6 +512,16 @@ ${HF.SKRIPTE.map(s => `<script src="${basis}${s}"></script>`).join('\n')}
         if (sx1 - sx0 < 4 || sy1 - sy0 < 4) continue;
         const wert = Math.sqrt((sx1 - sx0) * (sy1 - sy0)) * (passt(objWorte(e)) ? 2.5 : 1) * (e.o.auto ? 0.25 : 1);
         if (wert > bestM) { bestM = wert; motiv = { x0: sx0, x1: sx1, y0: sy0, y1: sy1, id: e.id }; }
+      }
+      // Dinge, die der alte Zeichner malt (z. B. das schwarze Loch), aus ihrer Weltposition
+      {
+        const K = I.kamera(F, t), ks = (W / 100) * K.z;
+        for (const o of F.w2d.liste) {
+          if (o.typ !== 'loch' || !(o.t0 + 0.3 <= t && t < (o.t1 ?? P.D))) continue;
+          const q = I.pos(F, o, t), X = W / 2 + (q[0] - K.x) * ks, Y = H / 2 - (q[1] - K.y) * ks, R = o.r * 2.75 * ks; // sichtbarer Rand: Schatten + Lichtring
+          const wert = 2 * R * (passt([o.name, 'schwarzes loch'].join(' ')) ? 2.5 : 1);
+          if (wert > bestM && X > 0 && X < W && Y > 0 && Y < H) { bestM = wert; motiv = { x0: X - R, x1: X + R, y0: Y - R, y1: Y + R, id: null }; }
+        }
       }
       if (!motiv) motiv = { x0: W * 0.35, x1: W * 0.65, y0: H * 0.3, y1: H * 0.7 };
       const mx = (motiv.x0 + motiv.x1) / 2, my = (motiv.y0 + motiv.y1) / 2, mw = motiv.x1 - motiv.x0, mh = motiv.y1 - motiv.y0;
@@ -537,14 +550,26 @@ ${HF.SKRIPTE.map(s => `<script src="${basis}${s}"></script>`).join('\n')}
       const d = document.createElement('div');
       d.id = 'vorschauTitel';
       d.style.cssText = `position:absolute;left:${r2(fr.left)}px;top:${r2(fr.top)}px;width:${W}px;height:${H}px;pointer-events:none;z-index:99999;overflow:hidden`;
-      d.innerHTML = `<div style="position:absolute;inset:0;background:radial-gradient(circle at ${r2(px)}px ${r2(py)}px,rgba(255,255,255,.22),rgba(255,255,255,0) ${r2(Math.max(mw, mh) * z * 0.75)}px)"></div>`
+      const R = Math.max(mw, mh) * z / 2;
+      d.innerHTML = `<div style="position:absolute;inset:0;background:radial-gradient(circle at ${r2(px)}px ${r2(py)}px,rgba(255,255,255,0) ${r2(R * 0.8)}px,rgba(255,255,255,.2) ${r2(R * 1.05)}px,rgba(255,255,255,0) ${r2(R * 1.8)}px)"></div>`
         + `<div style="position:absolute;inset:0;background:radial-gradient(ellipse at ${r2(px)}px ${r2(py)}px,rgba(0,0,0,0) 35%,rgba(0,0,0,.5) 100%)"></div>`
         + `<div style="position:absolute;inset:0;background:linear-gradient(${textLinks ? '90deg' : '270deg'},rgba(0,0,0,.35),rgba(0,0,0,0) 50%)"></div>`
-        + `<div class="vt-text" style="position:absolute;${textLinks ? 'left' : 'right'}:${r2(W * 0.05)}px;top:50%;transform:translateY(-50%);width:${r2(W * 0.44)}px;text-align:${textLinks ? 'left' : 'right'};font-family:${schrift},sans-serif;font-weight:900;font-size:${r2(fs)}px;line-height:.98;letter-spacing:-.01em;color:#fff;text-shadow:0 ${r2(H * 0.008)}px 0 rgba(0,0,0,.35),0 0 ${r2(H * 0.05)}px rgba(0,0,0,.45);overflow-wrap:break-word">${html}</div>`;
+        + `<div class="vt-text" style="position:absolute;${textLinks ? 'left' : 'right'}:${r2(W * 0.05)}px;top:50%;transform:translateY(-50%);width:${r2(W * 0.44)}px;text-align:${textLinks ? 'left' : 'right'};font-family:${schrift},sans-serif;font-weight:900;font-size:${r2(fs)}px;line-height:.98;letter-spacing:-.01em;color:#fff;text-shadow:0 ${r2(H * 0.008)}px 0 rgba(0,0,0,.35),0 0 ${r2(H * 0.05)}px rgba(0,0,0,.45)">${html}</div>`;
       const css = document.createElement('style');
       css.textContent = 'body.vorschaubild .txt,body.vorschaubild .uebl,body.vorschaubild .schilde{display:none!important}';
       document.head.appendChild(css);
       document.body.appendChild(d);
+      // Schrift so weit verkleinern, dass jedes Wort in eine Zeile passt und der Text nicht zu hoch wird
+      {
+        const box = d.querySelector('.vt-text'), dk0 = d.getBoundingClientRect().width / W;
+        let gr = fs;
+        for (let n = 0; n < 30; n++) {
+          const breit = Math.max(...[...box.querySelectorAll('span')].map(x => x.getBoundingClientRect().width)) / dk0;
+          if (breit <= W * 0.44 && box.getBoundingClientRect().height / dk0 <= H * 0.62) break;
+          gr *= 0.93; box.style.fontSize = r2(gr) + 'px';
+        }
+        box.style.whiteSpace = 'normal';
+      }
       const dr = d.getBoundingClientRect(), te = d.querySelector('.vt-text').getBoundingClientRect(), dk = dr.width / W;
       const tr = { x0: (te.left - dr.left) / dk, x1: (te.right - dr.left) / dk, y0: (te.top - dr.top) / dk, y1: (te.bottom - dr.top) / dk };
       // Dinge, die durch den Zoom nur noch halb im Bild sind oder hinter dem Text liegen, ausblenden (das Motiv bleibt)
@@ -556,7 +581,8 @@ ${HF.SKRIPTE.map(s => `<script src="${basis}${s}"></script>`).join('\n')}
         const x0 = (r.left - fr.left) / sk, x1 = (r.right - fr.left) / sk, y0 = (r.top - fr.top) / sk, y1 = (r.bottom - fr.top) / sk; // schon mit Zoom
         const ganz = (x1 - x0) * (y1 - y0), drin = Math.max(0, Math.min(W, x1) - Math.max(0, x0)) * Math.max(0, Math.min(H, y1) - Math.max(0, y0));
         const unterText = Math.max(0, Math.min(x1, tr.x1) - Math.max(x0, tr.x0)) * Math.max(0, Math.min(y1, tr.y1) - Math.max(y0, tr.y0));
-        if (e.id !== motiv.id && (drin < ganz * 0.6 || unterText > ganz * 0.12)) el.style.visibility = 'hidden';
+        const istText = e.o.typ === 'zahl' && !e.o.ohneRand;
+        if (e.id !== motiv.id && (istText || drin < ganz * 0.6 || unterText > ganz * 0.12)) el.style.visibility = 'hidden';
       }
       return { t, text, zoom: r2(z), motiv: [r2(mx), r2(my)] };
     };

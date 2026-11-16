@@ -31,6 +31,7 @@ Erklärfilm-Generator: Claude schreibt ein Skript in einer deutschen Befehlsspra
 - Zeichnung und Verhalten im neuen Stil: `OB.schleim` / `HF.bewegung.schleim` in `hf/figuren2d.js`. Wird beim Heranzoomen räumlicher (Tiefe, Glanz, Bläschen-Parallaxe).
 - Einmalige Dinge (Mond, Sonne, Erde …, gleicher Name): `neuesObjekt` (welt2d.js) blendet das alte aus, wenn ein neues dazukommt.
 - Glib ist die Erzählstimme: `BF.vorKompilieren` (Hook in skript.js, läuft vor dem Übersetzen) schreibt in maskottchen.js Sprechersätze über Glib in die Ich-Form um (`BF.glibIchForm`). Die Zeilenzahl bleibt dabei gleich.
+- ⚫/🕳-Bildzeichen, die „Loch“ heißen oder so beschriftet sind, werden zum echten schwarzen Loch (`typ 'loch'`, dinge.js). Gibt es im Film ein Loch, malt der alte Zeichner den Weltraum (Gravitationslinse); seine Leinwand liegt dann unter den SVG-Dingen (`P.mitLoch`), sonst darüber.
 - `app/js/dinge.js` + `hf/dinge2d.js`: gezeichnete Hand (mit Schrumpel-Rillen, `o.schrumpel`), Rosine und Handtuch. Hand-Emojis und Bildzeichen mit dem Namen oder der Beschriftung „Rosine“/„Handtuch“ werden automatisch dazu.
 - `hf/keime2d.js` `OB.koerper`: Kind von vorne mit kurzer Hose. Organe liegen anatomisch richtig (Herz und Magen auf der Bildseite rechts), die Nerven gehen vom Gehirn über das Rückenmark bis in Finger und Zehen.
 - SVG-Klassennamen nicht doppelt vergeben: `.schatten` ist für Planeten reserviert (wird zur Sonne gedreht).

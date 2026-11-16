@@ -52,6 +52,9 @@
     for (const o of W.liste) {
       if (o.typ !== 'zahl' || !o.ohneRand) continue;
       const worte = [o.name.replace(/\d+$/, ''), ...W.texte.filter(x => x.an && x.an.obj === o.name).map(x => x.text)].map(norm).join(' ');
+      if (/^(⚫|🕳)$/u.test(ohneZusatz(o.text)) && /loch/.test(worte)) { // schwarzes Loch als Punkt-Emoji → echtes gezeichnetes schwarzes Loch
+        o.typ = 'loch'; o.r = o.r * 0.22; o.scheibe = []; o.vonSymbol = true; o.farbe = null; continue;
+      }
       if (HAND.test(ohneZusatz(o.text)) && [...ohneZusatz(o.text)].length === 1) o.typ = 'hand';
       else if (/rosine/.test(worte)) o.typ = 'rosine';
       else if (/handtuch|badetuch/.test(worte)) o.typ = 'handtuch';
