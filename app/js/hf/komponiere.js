@@ -12,7 +12,7 @@
   const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 
   // Skripte, die die Komposition braucht (dieselbe Engine wie die App, nur ohne Oberfläche)
-  HF.SKRIPTE = ['vendor/three.min.js', 'vendor/gsap.min.js', 'js/texturen.js', 'js/skript.js', 'js/physik.js', 'js/ablauf.js', 'js/figuren.js', 'js/wissen.js', 'js/video.js', 'js/welt2d.js', 'js/urzeit.js', 'js/maskottchen.js', 'js/tiere.js', 'js/spannung.js', 'js/waswaere.js', 'js/autokorrektur.js', 'js/klartext.js', 'js/hf/stile.js', 'js/hf/twemoji-liste.js', 'js/hf/grafik.js', 'js/hf/figuren2d.js', 'js/hf/keime2d.js', 'js/hf/tiere2d.js', 'js/hf/rest2d.js', 'js/hf/komponiere.js'];
+  HF.SKRIPTE = ['vendor/three.min.js', 'vendor/gsap.min.js', 'js/texturen.js', 'js/skript.js', 'js/physik.js', 'js/ablauf.js', 'js/figuren.js', 'js/wissen.js', 'js/video.js', 'js/welt2d.js', 'js/urzeit.js', 'js/maskottchen.js', 'js/tiere.js', 'js/dinge.js', 'js/spannung.js', 'js/waswaere.js', 'js/autokorrektur.js', 'js/klartext.js', 'js/hf/stile.js', 'js/hf/twemoji-liste.js', 'js/hf/grafik.js', 'js/hf/figuren2d.js', 'js/hf/keime2d.js', 'js/hf/tiere2d.js', 'js/hf/rest2d.js', 'js/hf/dinge2d.js', 'js/hf/komponiere.js'];
 
   HF.passt = function (F) {
     if (!F || !F.w2d || !F.w2d.liste) return false;

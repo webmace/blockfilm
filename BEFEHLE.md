@@ -191,6 +191,7 @@ Jede Szene beginnt mit einem passenden `hintergrund`. Am Ende eines Kapitels all
 ### Maskottchen Glib
 `maskottchen2d glib bei -30 -11 groesse 7` – unser Maskottchen: ein kleiner bunter Schleim. Er wackelt, blinzelt, schaut zum Neuesten im Bild, bewegt den Mund, wenn gesprochen wird, und hüpft bei `bewege2d glib zu …`. Mit `schweben` schwebt er (z. B. im Weltraum oder unter Wasser). Ohne eigenes `maskottchen2d` erzählt Glib den Film: er steht in jedem Kapitel in einer freien unteren Ecke und spricht mit; `maskottchen aus` schaltet das ab.
 Glib passt sich der Umgebung an: unter Wasser (`meer`) fährt er U-Boot, im Weltraum trägt er einen Helm, im Schnee Mütze und Schal, in der Wüste Sonnenhut und Brille, in der Urzeit einen Forscherhut, unter dem Mikroskop sitzt er in einer Blase. Als Erzähler läuft er zwischen den Sätzen herum und hüpft bei Ausrufen.
+Glib ist die Sprecherstimme: `sprecher`-Sätze stehen in der Ich-Form („Hallo! Ich bin Glib.“, „Ich frage mich: Warum …?“). Sätze wie „Glib fragt: …“ oder „Glib badet …“ werden automatisch umgeschrieben („Warum …?“, „Ich bade …“), außer bei `maskottchen aus`.
 Menschenfiguren (`kind2d`), die nichts tun und im Text nicht vorkommen, werden weggelassen (`menschen bleiben` schaltet das ab).
 Dinge, die es nur einmal gibt (Mond, Sonne, Erde, Mars …), stehen nie doppelt im Bild: kommt ein neuer Mond dazu, verschwindet der alte.
 
@@ -211,6 +212,8 @@ Dinge, die es nur einmal gibt (Mond, Sonne, Erde, Mars …), stehen nie doppelt 
 | Befehl | Beispiel |
 |---|---|
 | `kind2d` | `kind2d kind bei -16 -11 groesse 12` (Kind; `farbe blau` = anderes Shirt) · `niesen2d kind rechts` |
+| `hand2d` | `hand2d hand1 bei 10 0 groesse 8 [schrumpelig]` (offene Hand) · `schrumpel2d hand1 [aus] [in 1.5]` (Fingerkuppen bekommen Rillen bzw. werden wieder glatt). `symbol2d` mit 🖐️/✋/🤚 wird automatisch zu dieser Hand; sie wird von selbst schrumpelig, wenn der Sprecher von Schrumpeln, Rillen oder Falten spricht, und wieder glatt bei „wieder glatt“. |
+| `rosine2d` / `handtuch2d` | `rosine2d r1 bei 0 0 groesse 5` · `handtuch2d t1 bei 0 0 groesse 8 farbe blau` (dafür gibt es kein passendes Emoji; ein Bildzeichen mit dem Namen oder der Beschriftung „Rosine“/„Handtuch“ wird automatisch so gezeichnet) |
 | `koerper2d` | `koerper2d k bei 0 -26 groesse 48` (Mensch von vorne) · `zeige2d k herz` (gehirn, nerven, herz, blut, lunge, magen, darm, knochen, alles) · `essen2d k` · `winke2d k in 3` |
 | `baum2d` | `baum2d baum bei 16 -11 groesse 20 farbe gruen` · `faerbe2d baum zu gelb in 3` · `blaetterfallen2d baum anzahl 30 in 7` · `wachsen2d baum in 3` |
 | `pflanze2d` | `pflanze2d p1 art farn bei -20 -11 groesse 8` (farn, palmfarn, nadelbaum, schachtelhalm, blume, gras, busch) |

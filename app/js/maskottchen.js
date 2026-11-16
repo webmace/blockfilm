@@ -130,6 +130,42 @@
     return altKind(w, t, h);
   };
 
+  // ---------- Glib erzählt selbst: Sprechertext in der Ich-Form ----------
+  // „Glib fragt: Warum …?“ → „Warum …?“, „Das ist Glib.“ → „Ich bin Glib.“, „Glib badet …“ → „Ich bade …“,
+  // „… guckt Glib auf …“ → „… gucke ich auf …“. Gilt nicht mit „maskottchen aus“.
+  const SAGEN = /^Glib\s+(fragt|ruft|staunt|sagt|meint|denkt|überlegt|jubelt|lacht|flüstert|kichert|grübelt|rätselt|antwortet|erklärt|schreit|seufzt|freut\s+sich|wundert\s+sich|fragt\s+sich|denkt\s+sich)(\s+(dich|euch|laut|leise|begeistert|neugierig|fröhlich|erstaunt|aufgeregt|nochmal|noch\s+einmal))*\s*:\s*/i;
+  const UNREGEL = { ist: 'bin', hat: 'habe', kann: 'kann', will: 'will', darf: 'darf', muss: 'muss', mag: 'mag', weiß: 'weiß', soll: 'soll', sieht: 'sehe', läuft: 'laufe', fährt: 'fahre', nimmt: 'nehme', gibt: 'gebe', isst: 'esse', schläft: 'schlafe', hält: 'halte', fällt: 'falle', liest: 'lese', trifft: 'treffe', wird: 'werde', trägt: 'trage', lässt: 'lasse', vergisst: 'vergesse', hilft: 'helfe', spricht: 'spreche', wirft: 'werfe', fängt: 'fange', bläst: 'blase', wäscht: 'wasche' };
+  const KEIN_VERB = /^(nicht|gut|weit|bunt|jetzt|heute|selbst|zuerst|zuletzt|fast|oft|erst|t)$/i;
+  function ichVerb(v) {
+    if (UNREGEL[v.toLowerCase()]) return UNREGEL[v.toLowerCase()];
+    if (KEIN_VERB.test(v) || !/^[a-zäöüß]+t$/.test(v) || v.length < 4) return null;
+    return /[^aeiouäöü]et$/.test(v) ? v.slice(0, -2) + 'e' : v.slice(0, -1) + 'e'; // badet → bade, rechnet → rechne, guckt → gucke
+  }
+  const gross = s => s.charAt(0).toUpperCase() + s.slice(1);
+  function ichForm(satz) {
+    let s = satz.replace(SAGEN, '');
+    if (s !== satz) return gross(s);
+    s = s.replace(/^(Glib\s+und\s+ich|Ich\s+und\s+Glib)\b/, 'Wir').replace(/\b(Glib\s+und\s+ich|ich\s+und\s+Glib)\b/g, 'wir');
+    if (s !== satz) return s.replace(/^Wir\s+(\S+)/, (m, v) => 'Wir ' + v); // Verb steht schon im Plural („Glib und ich sagen“)
+    s = s.replace(/\b(Das|Hier|Da)\s+ist\s+Glib\b/g, (m, a) => (a === 'Das' ? 'Ich bin Glib' : a + ' bin ich'));
+    s = s.replace(/\bGlib\s+und\s+du,\s+ihr\s+seid\b/g, 'Du und ich, wir sind').replace(/\bGlib\s+und\s+du\b/g, 'du und ich');
+    // Nebensatz: „was Glib jetzt sieht?“ → „was ich jetzt sehe?“ (Verb am Ende)
+    s = s.replace(/\b(was|wenn|bis|weil|dass|ob|wie|wo|als|damit|ehe|sobald|während)\s+Glib\s+([^,.!?;:]*?)\s*([a-zäöüß]+)(?=\s*([,.!?;:]|$))/gi, (all, k, mitte, v) => { const i = ichVerb(v); return i ? `${k} ich ${mitte ? mitte + ' ' : ''}${i}` : all; });
+    let m = /^Glib\s+(\S+)/.exec(s);
+    if (m) { const v = ichVerb(m[1]); if (v) s = 'Ich ' + v + s.slice(m[0].length); }
+    s = s.replace(/\b([a-zäöüß]+)\s+Glib\b/g, (all, v) => { if (/^(mit|zu|bei|von)$/.test(v)) return v + ' mir'; if (/^(für|um|ohne|an)$/.test(v)) return v + ' mich'; const i = ichVerb(v); return i ? i + ' ich' : all; });
+    if (s !== satz) s = s.replace(/\bsein(e|en|em|er|es)?\b/g, (x, e) => 'mein' + (e || '')).replace(/\bsich\b/g, 'mich');
+    return s;
+  }
+  BF.glibIchForm = text => String(text).split(/(?<=[.!?])\s+/).map(ichForm).join(' ');
+  BF.vorKompilieren = BF.vorKompilieren || [];
+  BF.vorKompilieren.push(function glibErzaehltSelbst(text) {
+    if (/^\s*maskottchen\s+(aus|weg|nein)\b/mi.test(text)) return text;
+    const mia = /^\s*(?:&\s*)?(kind2d|mensch2d)\s+mia\d*\b/mi.test(text); // die frühere Begleitfigur Mia ist jetzt Glib
+    if (!/Glib/.test(text) && !mia) return text;
+    return text.split('\n').map(z => z.replace(/^(\s*(?:&\s*)?(?:sprecher|erzaehler|erzähler|erzaehlerin|erzählerin|vorlesen|sprich)\s+")([^"]*)(".*)$/i, (all, a, t, b) => a + BF.glibIchForm(mia ? t.replace(/\bMia\b/g, 'Glib') : t) + b)).join('\n');
+  });
+
   // ---------- einfache Zeichnung für die alte Vorschau (ohne „Neuer Stil“) ----------
   BF.zeichne2d = BF.zeichne2d || {};
   BF.zeichne2d.schleim = function (ctx, o, sx, sy, r, t) {

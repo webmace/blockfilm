@@ -202,6 +202,9 @@
     try { localStorage.setItem('bf_entwurf2', ta.value); } catch {}
   }
   let kiLaeuft = false;
+  const AENDERUNG = /\b(mach\w*|füg\w*|fueg\w*|änder\w*|aender\w*|ersetz\w*|kürzer|kuerzer|länger|laenger|lass\w*|nimm|zeig\w*|statt|mehr|weniger|bitte|soll\w*|noch|besser|schneller|langsamer|entfern\w*|lösch\w*|loesch\w*|weg|tausch\w*|nochmal|kannst|könntest|koenntest)\b/i;
+  const FRAGE = /^(warum|wieso|weshalb|wie|was|wer|wo|wann|woher|wohin|welche\w*|kann|können|koennen|gibt es|stimmt es|stell dir vor)\b/i;
+  function istNeuesThema(s) { return !AENDERUNG.test(s) && (FRAGE.test(s.trim()) || /\?\s*$/.test(s)); }
   async function kiFilm() {
     if (kiLaeuft) return;
     const eingabe = $('kiThema').value.trim();
@@ -210,6 +213,9 @@
     if (!S.kiBereit) { kiEinstellungen(); return; }
     kiLaeuft = true;
     $('kiLos').disabled = true;
+    // Eine neue Frage („Warum …?“) ist ein neuer Film, auch wenn gerade ein KI-Film offen ist; sonst würde der neue
+    // Film unter dem alten Thema und Dateinamen gespeichert und überschriebe den alten.
+    if (S.ki && istNeuesThema(eingabe)) { S.ki = null; kiAnsicht(); }
     const aendern = !!S.ki;
     const thema = aendern ? S.ki.thema : eingabe;
     const alter = aendern ? S.ki.alter : $('kiAlter').value;

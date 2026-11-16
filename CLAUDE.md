@@ -30,12 +30,16 @@ Erklärfilm-Generator: Claude schreibt ein Skript in einer deutschen Befehlsspra
 - `app/js/maskottchen.js` (Engine, beide Renderer): Befehl `maskottchen2d` (Typ `schleim`), `maskottchen aus`, Glib als Erzähler: in jedem Kapitel fest in einer freien unteren Ecke, unabhängig von der Kamera (Hook `BF.nachKompilieren`, Objekte mit `auto: true`). `kind2d mia` wird zu Glib (kleiner).
 - Zeichnung und Verhalten im neuen Stil: `OB.schleim` / `HF.bewegung.schleim` in `hf/figuren2d.js`. Wird beim Heranzoomen räumlicher (Tiefe, Glanz, Bläschen-Parallaxe).
 - Einmalige Dinge (Mond, Sonne, Erde …, gleicher Name): `neuesObjekt` (welt2d.js) blendet das alte aus, wenn ein neues dazukommt.
+- Glib ist die Erzählstimme: `BF.vorKompilieren` (Hook in skript.js, läuft vor dem Übersetzen) schreibt in maskottchen.js Sprechersätze über Glib in die Ich-Form um (`BF.glibIchForm`). Die Zeilenzahl bleibt dabei gleich.
+- `app/js/dinge.js` + `hf/dinge2d.js`: gezeichnete Hand (mit Schrumpel-Rillen, `o.schrumpel`), Rosine und Handtuch. Hand-Emojis und Bildzeichen mit dem Namen oder der Beschriftung „Rosine“/„Handtuch“ werden automatisch dazu.
+- `hf/keime2d.js` `OB.koerper`: Kind von vorne mit kurzer Hose. Organe liegen anatomisch richtig (Herz und Magen auf der Bildseite rechts), die Nerven gehen vom Gehirn über das Rückenmark bis in Finger und Zehen.
 - SVG-Klassennamen nicht doppelt vergeben: `.schatten` ist für Planeten reserviert (wird zur Sonne gedreht).
 
 ## Spannung (Was-wäre-wenn)
 - `app/js/spannung.js`: erkennt Was-wäre-wenn-Filme (`BF.filmIstWasWaere`: Titel, KI-Thema, erste Kapitelkarte; Achtung, `BF.istWasWaere` aus klartext.js ist etwas anderes), Stufe nach Zielgruppe (`kind`/`mittel`/`voll`). Karten mit `tx.spannung`, Geräusche `trommelwirbel`/`tusch`/`spannung` (ton.js), 2D-Kamerawackeln `F.w2d.wackeln` (welt2d.js `kamera()`).
 
 ## Film-Übersicht und Hintergrund-Exporte
+- KI-Knopf: Ist ein KI-Film offen, bedeutet die Eingabe eine Änderung. Eine neue Frage („Warum …?“ ohne Änderungswörter, `istNeuesThema` in ui.js) startet trotzdem einen neuen Film, sonst würde der alte unter seinem Thema überschrieben.
 - Button „🎬 Alle Filme“ (`#galerie`, ui.js): fertige Videos (Abspielen im `#spieler`), KI-Filme, Themen-Filme, eigene Skripte; jeweils Ansehen oder Exportieren.
 - Exporte von dort gehen in die Warteschlange `/api/stapel` (server.mjs). Sie laufen nacheinander als eigene Prozesse `server.mjs --render … --stimme … --sprechtempo … --alter …`. Themen-Filme werden vorher als Skript nach `~/.cache/blockfilm/stapel/` geschrieben.
 

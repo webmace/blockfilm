@@ -221,6 +221,7 @@
 
   // ===================== Übersetzer =====================
   BF.kompiliere = function (text) {
+    for (const f of BF.vorKompilieren || []) text = f(text); // Textkorrekturen vor dem Übersetzen (Zeilen bleiben gleich)
     const F = {
       breite: 3840, hoehe: 2160, fps: 30, titel: 'Mein Blockfilm',
       weltOpt: { art: 'flach', groesse: 48, boden: 'gras', seed: 1, wolken: true, baeume: true },
