@@ -266,11 +266,18 @@
       try { ausspr = await post('/api/ki/aussprache', { skript: r.skript }); } catch {}
       kiLaden({ thema, alter, stil, quellen: r.quellen || (S.ki && S.ki.quellen) || [] }, r.skript);
       // jeder KI-Film wird gespeichert und erscheint in der Film-Leiste
+      let kiAutoExport = false;
       try {
         const name = 'KI/' + ((t => t.length > 60 ? t.slice(0, 60).replace(/\s+\S*$/, '') : t)(thema.replace(/[^\wäöüÄÖÜß\- ]+/g, '').trim()) || 'KI-Film') + ' (' + alter + ')';
         const gesp = await post('/api/schreiben', { pfad: name, text: ta.value });
         S.datei = gesp.pfad; S.zeitDatei = gesp.zeit; S.geaendert = false; titelAkt();
         filmleisteLaden();
+        // jeder KI-Film wird auch gleich im Hintergrund als Video exportiert (landet in ~/Videos/Blockfilm)
+        try {
+          const r = await post('/api/stapel', { filme: [{ pfad: gesp.pfad, name: thema }], aufl: $('gal-aufl').value, stimme: BF.stimmeWahl || null, tempo: BF.sprechTempoWahl || null, alter });
+          if (r.neu) kiAutoExport = true;
+          exporteAktualisieren();
+        } catch {}
       } catch {}
       $('kiThema').value = '';
       let zusatz = '';
@@ -278,6 +285,7 @@
       else if (ausspr) zusatz = ' (Aussprache konnte nicht geprüft werden.)';
       if (regie && regie.ok) zusatz += regie.geaendert ? ` 🎬 Regie hat nachgebessert: ${(regie.notizen.length ? regie.notizen : ['einige Bilder verbessert']).join('; ')}.` : ' 🎬 Regie-Prüfung: alles gut.';
       else if (regie) zusatz += ` (Regie-Prüfung ging nicht: ${regie.fehler})`;
+      if (kiAutoExport) zusatz += ' 💾 Das Video wird im Hintergrund exportiert und erscheint danach oben in der Leiste.';
       kiStatus(`✓ Fertig nach ${Math.round((Date.now() - start) / 1000)} Sekunden.${zusatz} Drück ▶ zum Anschauen.`);
     } catch (e) {
       kiStatus('⚠ ' + e.message, 'fehler');

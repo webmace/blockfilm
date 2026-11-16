@@ -262,7 +262,7 @@ function stapelHinzu(o) {
       fs.writeFileSync(datei, String(f.text));
     }
     if (!datei || !fs.existsSync(datei)) continue;
-    if (stapel.warten.some(w => w.datei === datei) || (stapel.laeuft && stapel.laeuft.datei === datei)) continue;
+    if (stapel.warten.some(w => w.datei === datei)) continue; // wartet schon (liest das Skript erst beim Start, also die neueste Fassung)
     const stempel = new Date().toISOString().slice(0, 19).replace(/[:T]/g, '-');
     stapel.warten.push({ datei, name: String(f.name || path.basename(datei, '.txt')), ziel: path.join(VIDEOS, `${sicherName(f.name)}_${stempel}.mp4`), aufl, stimme: o.stimme || null, tempo: o.tempo || null, alter: o.alter || null });
     n++;
