@@ -50,6 +50,11 @@ Erklärfilm-Generator: Claude schreibt ein Skript in einer deutschen Befehlsspra
 - Nachtfilme: `~/Blockfilm/Nachtfilme/*.txt` sind aus `BF.THEMEN` erzeugt (`film`-Zeile + `vorschaubild` + `ohnevideo` + `BF.themaSkript(th, '3-5')`); nach Änderungen an den Themen neu erzeugen. `bin/nachtfilme` baut fehlende Videos (danach auch alle KI-Filme nach `~/Videos/Blockfilm/KI/`), `bin/nachbessern name …` baut einzelne neu.
 - Exporte von dort gehen in die Warteschlange `/api/stapel` (server.mjs). Sie laufen nacheinander als eigene Prozesse `server.mjs --render … --stimme … --sprechtempo … --alter …`. Themen-Filme werden vorher als Skript nach `~/.cache/blockfilm/stapel/` geschrieben.
 
+## YouTube und Tagesvideo
+- `youtube.mjs`: OAuth für Desktop-Apps (Rückruf `http://127.0.0.1:<port>/api/youtube/rueckruf`), Zugang in `einstellungen.json` → `youtube`. `ytHochladen()` lädt fortsetzbar hoch (immer `private`, `selfDeclaredMadeForKids`, Kategorie 27) und setzt das Vorschaubild (geht erst bei bestätigtem Kanal).
+- `server.mjs --tagesvideo [--720p]`: wie `--render`, aber die App (`?tagesvideo=1`, ui.js) holt `/api/tagesvideo/auftrag` (Thema aus `~/Blockfilm/tagesthemen.txt` oder `kiTagesThema`), läuft `kiFilm()` durch, exportiert nach `~/Videos/Blockfilm/Tagesvideos/` und meldet `/api/tagesvideo/fertig`; dann schreibt `kiYoutubeText` Titel/Beschreibung/Tags und es wird hochgeladen. Liste: `~/Blockfilm/tagesvideos.json`.
+- Zeitplan: `bin/tagesvideo` (wartet auf andere Exporte) über `~/.config/systemd/user/blockfilm-tagesvideo.timer`, eingestellt im Dialog 📺.
+
 ## KI-Regie-Prüfung
 Nach dem Schreiben eines KI-Films (Schalter „🎬 Regie“, nur für Filme mit der 2D-Welt):
 - `app/js/hf/regie.js`: `HF.regieBefunde(F, skript)` findet automatisch leere Bilder, Objekte außerhalb oder unter den Untertiteln, Überdeckungen, lange Pausen (mit den Zeilen, die sie verursachen), volle Bilder und Emojis ohne Grafik. `HF.regieMomente` wählt die Zeitpunkte für Standbilder.

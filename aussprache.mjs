@@ -58,7 +58,10 @@ function zahlText(roh) {
 // und in Verben ("weggehen", "wegnehmen"); "der Weg" und "wegen" bleiben, wie sie sind.
 const VORHER = [
   [/(^|[.!?:;]\s+|["„»(]\s*)Weg(?=\s+(?:ist|sind|war|waren|damit|da|hier|mit|und|vom|von|weg)\b|\s*[!,.?]|$)/g, (m, vor) => vor + 'Weck'],
-  [/\bweg(?!en\b|e\b|es\b)(?=[bdglmnrsw][a-zäöüß])/g, 'weck-'],
+  // „weg“ (fort) ist kurz wie „weck“; die Stimme liest es sonst manchmal lang wie „der Weg“. Das gilt auch in
+  // Zusammensetzungen (wegfliegen, weghüpfen, hinweg). „wegen“ und das Nomen „Weg“ bleiben lang.
+  [/\b(hin|vor|darüber|drüber|über|hin-)?weg(?!en\b|e\b|es\b|ung)(?=$|[^a-zäöüß]|[a-zäöüß])/g, (m, vor) => (vor ? vor.replace(/-$/, '') + ' ' : '') + 'weck'],
+  [/\bWegweiser/g, 'Wehgweiser'],
 ];
 const WOERTER = [
   [/\b([Oo])range(n|ne|nen|ner|nes|ns|s)?\b/g, (m, o, e) => (e ? 'O-rangsche' + { n: 'n', ne: 'ne', nen: 'nen', ner: 'ner', nes: 'nes', ns: 'ns', s: 's' }[e] : 'O-rangsch')],

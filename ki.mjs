@@ -249,3 +249,40 @@ Antworte nur mit JSON: {"korrekturen":[{"wort":"Wort genau wie im Text","schreib
     return { ok: false, fehler: String(err.message || err) };
   }
 }
+
+// ---------- Tagesvideo: neues Thema finden und Text für YouTube schreiben ----------
+async function kiKurz(system, frage) {
+  const { default: Anthropic } = await import('@anthropic-ai/sdk');
+  const e = einstellungenLesen();
+  const client = e.apiKey ? new Anthropic({ apiKey: e.apiKey }) : new Anthropic();
+  return kiFragen(client, [{ type: 'text', text: system }], [{ role: 'user', content: frage }], []);
+}
+
+// Ein neues, kindgerechtes Thema als Frage, das es noch nicht gab
+export async function kiTagesThema({ alter = '3-5', bisher = [] }) {
+  const text = await kiKurz(`Du planst einen YouTube-Kanal mit kurzen Wissensfilmen für Kinder (Zielgruppe: ${ALTER[alter] ? alter + ' Jahre' : alter}). Jeden Tag kommt ein neuer Film.
+Schlage genau EIN neues Thema vor: eine Frage, die Kinder dieses Alters wirklich stellen und die man mit Bildern gut erklären kann (Natur, Tiere, Körper, Weltall, Wetter, Technik, Alltag, „Was wäre, wenn …?“). Abwechslung: nicht dasselbe Gebiet wie bei den letzten Filmen. Es muss wissenschaftlich klar beantwortbar sein, nichts Gruseliges, nichts Politisches.
+Antworte nur mit der Frage selbst, auf Deutsch, richtig geschrieben, mit Fragezeichen.`, 'Diese Themen gab es schon:\n' + (bisher.length ? bisher.slice(-80).map(t => '- ' + t).join('\n') : '(noch keine)'));
+  const z = text.split('\n').map(s => s.trim().replace(/^["„»-]+|["“«]+$/g, '')).find(s => s.length > 8);
+  if (!z) throw new Error('Die KI hat kein Thema vorgeschlagen.');
+  return z;
+}
+
+// Titel, Beschreibung und Schlagwörter für YouTube
+export async function kiYoutubeText({ thema, alter = '3-5', skript = '', quellen = [] }) {
+  const saetze = skript.split('\n').filter(z => /^&?\s*sprecher\b/.test(z)).map(z => (z.match(/"([^"]*)"/) || [, ''])[1]).filter(Boolean).join(' ').slice(0, 6000);
+  const text = await kiKurz(`Du schreibst den YouTube-Text für einen kurzen Wissensfilm für Kinder (${alter} Jahre) auf Deutsch. Erzähler ist das Maskottchen Glib, ein bunter Schleim.
+Antworte nur mit JSON: {"titel":"…","beschreibung":"…","tags":["…"]}
+- titel: höchstens 70 Zeichen, neugierig machend, richtig geschrieben, kein Clickbait, keine Großbuchstaben-Wörter, höchstens ein Emoji.
+- beschreibung: 3 bis 6 kurze Sätze für Eltern und Kinder: worum es geht und was man lernt. Dann eine Leerzeile und "Für Kinder von ${alter} Jahren." Keine Links (die Quellen werden automatisch angehängt), keine Hashtag-Listen.
+- tags: 8 bis 15 Schlagwörter auf Deutsch (Thema, Fachbegriffe, "für Kinder", "Wissen für Kinder", "Erklärvideo").`, `Thema: ${thema}\n\nWas im Film gesagt wird:\n${saetze}`);
+  const m = text.match(/\{[\s\S]*\}/);
+  let j = {};
+  try { j = JSON.parse(m ? m[0] : text); } catch {}
+  const titel = String(j.titel || thema).trim();
+  let beschreibung = String(j.beschreibung || thema).trim();
+  const q = (quellen || []).filter(x => x && /^https:\/\//.test(x.url)).slice(0, 8);
+  if (q.length) beschreibung += '\n\nQuellen:\n' + q.map(x => `${x.titel ? x.titel + ': ' : ''}${x.url}`).join('\n');
+  beschreibung += '\n\nGemacht mit Blockfilm. Text und Bilder entstehen mit Hilfe einer KI und werden vor dem Veröffentlichen geprüft.';
+  return { titel, beschreibung, tags: Array.isArray(j.tags) ? j.tags : [] };
+}

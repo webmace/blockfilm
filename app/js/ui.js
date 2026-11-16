@@ -183,6 +183,35 @@
     $('kiSchluessel').focus();
   }
   $('kiEinst').onclick = () => kiEinstellungen();
+  // ---------- YouTube und Tagesvideo ----------
+  async function ytZeigen() {
+    let st; try { st = await api('/api/youtube/status'); } catch (e) { $('ytStatus').textContent = e.message; return; }
+    $('ytStatus').innerHTML = st.verbunden ? `✅ Verbunden${st.kanal ? ` mit dem Kanal <b>${esc(st.kanal.name)}</b>` : ''}.` : st.client ? '🔑 Zugang gespeichert. Jetzt „Mit YouTube verbinden“ klicken.' : '⬜ Noch nicht eingerichtet.';
+    $('ytTrennen').hidden = !st.verbunden;
+    $('tvAn').checked = !!st.tagesvideo.an; $('tvZeit').value = st.tagesvideo.uhrzeit; $('tvAlter').value = st.tagesvideo.alter;
+    $('tvListe').innerHTML = st.letzte.length ? '<b>Letzte Tagesvideos:</b><br>' + st.letzte.map(v => `${new Date(v.datum).toLocaleDateString('de-DE')}: ${esc(v.titel || v.thema || '')} ${v.url ? `<a data-url="${esc(v.url)}">▶ auf YouTube</a>` : ''}${v.fehler ? ` <span style="color:#f88">⚠ ${esc(v.fehler)}</span>` : ''}`).join('<br>') : '';
+  }
+  $('ytEinst').onclick = () => { $('ytDialog').hidden = false; ytZeigen(); };
+  $('ytCloud').onclick = e => { e.preventDefault(); post('/api/oeffnen', { pfad: 'https://console.cloud.google.com/projectcreate' }); };
+  $('tvListe').addEventListener('click', e => { const a = e.target.closest('a[data-url]'); if (a) post('/api/oeffnen', { pfad: a.dataset.url }); });
+  $('ytClientSpeichern').onclick = async () => {
+    const j = await post('/api/youtube/client', { text: $('ytClient').value });
+    if (!j.ok) { $('ytStatus').textContent = '⚠ ' + j.fehler; return; }
+    $('ytClient').value = ''; ytZeigen();
+  };
+  $('ytVerbinden').onclick = () => {
+    const w = window.open('/api/youtube/verbinden', 'yt', 'width=560,height=720');
+    const uhr = setInterval(() => { if (!w || w.closed) { clearInterval(uhr); ytZeigen(); } }, 800);
+  };
+  $('ytTrennen').onclick = async () => { if (confirm('Verbindung zu YouTube trennen?')) { await post('/api/youtube/trennen', {}); ytZeigen(); } };
+  $('tvSpeichern').onclick = async () => {
+    const j = await post('/api/tagesvideo/einstellen', { an: $('tvAn').checked, uhrzeit: $('tvZeit').value, alter: $('tvAlter').value });
+    $('tvMeldung').textContent = !j.ok ? '⚠ ' + j.fehler : j.timer ? `✓ Jeden Tag um ${$('tvZeit').value} Uhr kommt ein neues Video.` : '✓ Gespeichert. Das Tagesvideo ist aus.';
+  };
+  $('tvJetzt').onclick = async () => {
+    await post('/api/tagesvideo/jetzt', {});
+    $('tvMeldung').textContent = '▶ Das Tagesvideo wird jetzt gemacht (wartet, falls gerade ein anderer Export läuft). Fortschritt unter „📋 Exporte“; am Ende kommt eine Benachrichtigung.';
+  };
   $('kiSeite').onclick = () => post('/api/oeffnen', { pfad: 'https://console.anthropic.com/settings/keys' });
   $('kiSpeichern').onclick = async () => {
     const j = await post('/api/ki/schluessel', { apiKey: $('kiSchluessel').value }).catch(e => ({ ok: false, fehler: e.message }));
@@ -272,8 +301,8 @@
         const gesp = await post('/api/schreiben', { pfad: name, text: ta.value });
         S.datei = gesp.pfad; S.zeitDatei = gesp.zeit; S.geaendert = false; titelAkt();
         filmleisteLaden();
-        // jeder KI-Film wird auch gleich im Hintergrund als Video exportiert (landet in ~/Videos/Blockfilm)
-        try {
+        // jeder KI-Film wird auch gleich im Hintergrund als Video exportiert (landet in ~/Videos/Blockfilm); beim Tagesvideo exportiert der Ablauf selbst
+        if (!S.tagesModus) try {
           const r = await post('/api/stapel', { filme: [{ pfad: gesp.pfad, name: thema }], aufl: $('gal-aufl').value, stimme: BF.stimmeWahl || null, tempo: BF.sprechTempoWahl || null, alter });
           if (r.neu) kiAutoExport = true;
           exporteAktualisieren();
@@ -287,7 +316,9 @@
       else if (regie) zusatz += ` (Regie-Prüfung ging nicht: ${regie.fehler})`;
       if (kiAutoExport) zusatz += ' 💾 Das Video wird im Hintergrund exportiert und erscheint danach oben in der Leiste.';
       kiStatus(`✓ Fertig nach ${Math.round((Date.now() - start) / 1000)} Sekunden.${zusatz} Drück ▶ zum Anschauen.`);
+      S.kiErgebnis = { ok: true };
     } catch (e) {
+      S.kiErgebnis = { ok: false, fehler: e.message };
       kiStatus('⚠ ' + e.message, 'fehler');
     } finally {
       clearInterval(uhr);
@@ -1317,7 +1348,26 @@ alex sagt "Wow!!"
     window.BF_UI = { S, szene, exportieren, kompilieren };
     // gespeicherten KI-Schlüssel beim Start erkennen (dann fragt die App nicht jedes Mal danach)
     kiPruefen().then(() => { if (!S.kiBereit) kiStatus('Tipp: Mit ⚙ richtest du die KI ein. Dann schreibt „🤖 KI-Film“ ganze Filme zu jedem Thema.'); });
-    if (q.get('render')) {
+    if (q.get('tagesvideo')) {
+      // Tagesvideo: Thema holen, KI-Film schreiben (wie mit dem Knopf), in 4K speichern, dann lädt der Server ihn hoch
+      let auftrag = null;
+      const fertig = o => post('/api/tagesvideo/fertig', Object.assign({ thema: auftrag && auftrag.thema, alter: auftrag && auftrag.alter }, o));
+      try {
+        auftrag = await api('/api/tagesvideo/auftrag');
+        if (!auftrag.ok) throw new Error(auftrag.fehler);
+        S.tagesModus = true; S.ki = null; kiAnsicht();
+        $('kiAlter').value = auftrag.alter; $('kiStil').value = 'echt'; $('kiRegie').checked = true;
+        $('kiThema').value = auftrag.thema;
+        await kiFilm();
+        if (!S.kiErgebnis || !S.kiErgebnis.ok) throw new Error((S.kiErgebnis && S.kiErgebnis.fehler) || 'Die KI konnte keinen Film schreiben.');
+        const ueberT = { '1080p': [1920, 1080], '720p': [1280, 720] }[info.aufl] || [3840, 2160]; // Standard 4K, zum Testen --720p
+        const erg = await exportieren({ breite: ueberT[0], hoehe: ueberT[1], ton: true, aus: auftrag.aus }, true);
+        if (!erg.ok) throw new Error(erg.fehler || 'Export ging nicht');
+        await fertig({ ok: true, video: erg.datei, skript: S.datei });
+      } catch (e) {
+        await fertig({ ok: false, fehler: e.message, skript: S.datei || null });
+      }
+    } else if (q.get('render')) {
       // Kommandozeilen-Modus: Video ohne Fenster bauen
       const ueber = { '4k': [3840, 2160], '1080p': [1920, 1080], '720p': [1280, 720] }[info.aufl] || [null, null];
       try {

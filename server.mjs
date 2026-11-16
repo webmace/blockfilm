@@ -10,7 +10,8 @@ import os from 'node:os';
 import { spawn, execFile } from 'node:child_process';
 import crypto from 'node:crypto';
 import { fileURLToPath } from 'node:url';
-import { kiSkript, kiBereit, einstellungenSchreiben, kiAussprache, kiRegie } from './ki.mjs';
+import { kiSkript, kiBereit, einstellungenSchreiben, einstellungenLesen, kiAussprache, kiRegie, kiTagesThema, kiYoutubeText } from './ki.mjs';
+import { ytStatus, ytClientSetzen, ytAnmeldeAdresse, ytCodeEinloesen, ytTrennen, ytHochladen } from './youtube.mjs';
 import { aussprechen, eigeneLesen, eigeneSchreiben, lautschrift } from './aussprache.mjs';
 
 const HIER = path.dirname(fileURLToPath(import.meta.url));
@@ -23,13 +24,14 @@ fs.mkdirSync(SKRIPTE, { recursive: true });
 fs.mkdirSync(VIDEOS, { recursive: true });
 
 const args = process.argv.slice(2);
-const renderModus = args.includes('--render');
+const tagesModus = args.includes('--tagesvideo'); // täglicher KI-Film: schreiben, exportieren, auf YouTube hochladen
+const renderModus = args.includes('--render') || tagesModus;
 const nurServer = args.includes('--server');
 const nurBild = args.includes('--nurbild'); // mit --render: nur das Vorschaubild machen (-o bild.jpg)
 let ausDatei = null, skriptDatei = null, extraAufl = null, renderStimme = null, renderTempo = null, renderAlter = null;
 for (let i = 0; i < args.length; i++) {
   const a = args[i];
-  if (a === '--render' || a === '--server') continue;
+  if (a === '--render' || a === '--server' || a === '--tagesvideo') continue;
   if (a === '-o' || a === '--aus') { ausDatei = path.resolve(args[++i]); continue; }
   if (a === '--stimme') { renderStimme = args[++i]; continue; }
   if (a === '--sprechtempo') { renderTempo = args[++i]; continue; }
@@ -411,6 +413,50 @@ function hfStatus() {
   return { aktiv: !J.fertig, fertig: J.fertig, ok: J.ok, fehler: J.fehler, anteil: J.anteil, text, datei: J.ziel, groesse };
 }
 
+// ---------- Tagesvideo ----------
+const TAGES_THEMEN = path.join(HOME, 'Blockfilm', 'tagesthemen.txt');
+const TAGES_LISTE = path.join(HOME, 'Blockfilm', 'tagesvideos.json');
+let tagesAuftrag = null;
+function tagesEinstellungen() { return Object.assign({ an: false, alter: '3-5', uhrzeit: '02:00' }, einstellungenLesen().tagesvideo || {}); }
+function tagesListe() { try { return JSON.parse(fs.readFileSync(TAGES_LISTE, 'utf8')); } catch { return []; } }
+function alleKiThemen() {
+  try { return fs.readdirSync(path.join(SKRIPTE, 'KI')).filter(f => f.endsWith('.txt')).map(f => f.replace(/ \([^)]*\)\.txt$/, '')); } catch { return []; }
+}
+const TIMER_DIR = path.join(HOME, '.config', 'systemd', 'user');
+async function tagesTimerAn() { return (await ausfuehren('systemctl', ['--user', 'is-enabled', 'blockfilm-tagesvideo.timer'])).trim() === 'enabled'; }
+async function tagesTimerSetzen(t) {
+  fs.mkdirSync(TIMER_DIR, { recursive: true });
+  fs.writeFileSync(path.join(TIMER_DIR, 'blockfilm-tagesvideo.service'), `[Unit]\nDescription=Blockfilm: Tagesvideo schreiben, speichern und auf YouTube hochladen\n\n[Service]\nType=simple\nExecStart=${path.join(HIER, 'bin', 'tagesvideo')}\n`);
+  const [h, m] = t.uhrzeit.split(':');
+  fs.writeFileSync(path.join(TIMER_DIR, 'blockfilm-tagesvideo.timer'), `[Unit]\nDescription=Blockfilm: jeden Tag ein Video\n\n[Timer]\nOnCalendar=*-*-* ${h.padStart(2, '0')}:${m}:00\nPersistent=true\n\n[Install]\nWantedBy=timers.target\n`);
+  await ausfuehren('systemctl', ['--user', 'daemon-reload']);
+  await ausfuehren('systemctl', ['--user', t.an ? 'enable' : 'disable', '--now', 'blockfilm-tagesvideo.timer']);
+}
+// nach dem Export: Text für YouTube schreiben, hochladen (privat), merken
+async function tagesAbschliessen(o) {
+  const eintrag = { datum: new Date().toISOString(), thema: o.thema || (tagesAuftrag && tagesAuftrag.thema), alter: o.alter, skript: o.skript || null, video: o.video || null };
+  const merken = () => { const l = tagesListe(); l.push(eintrag); fs.writeFileSync(TAGES_LISTE, JSON.stringify(l, null, 2)); };
+  if (!o.ok || !o.video || !fs.existsSync(o.video)) { eintrag.fehler = o.fehler || 'kein Video'; merken(); console.log('Fehler: ' + eintrag.fehler); benachrichtigen('Tagesvideo ging nicht: ' + eintrag.fehler); return 1; }
+  try {
+    const skript = o.skript && fs.existsSync(o.skript) ? fs.readFileSync(o.skript, 'utf8') : '';
+    let quellen = [];
+    try { const z = skript.split('\n').find(x => x.startsWith('#KI ')); if (z) quellen = JSON.parse(z.slice(4)).quellen || []; } catch {}
+    const text = await kiYoutubeText({ thema: eintrag.thema, alter: eintrag.alter, skript, quellen });
+    Object.assign(eintrag, { titel: text.titel });
+    if (!ytStatus().verbunden) { eintrag.fehler = 'nicht mit YouTube verbunden'; merken(); benachrichtigen(`Tagesvideo fertig („${text.titel}“), aber Blockfilm ist nicht mit YouTube verbunden.`); return 0; }
+    console.log('Lade hoch: ' + text.titel);
+    let zuletzt = 0;
+    const bild = o.video.replace(/\.mp4$/i, '.jpg');
+    const erg = await ytHochladen({ datei: o.video, titel: text.titel, beschreibung: text.beschreibung, tags: text.tags, bild, fortschritt: a => { if (a - zuletzt > 0.1) { zuletzt = a; process.stdout.write(`\rHochladen ${Math.round(a * 100)} %   `); } } });
+    Object.assign(eintrag, { youtube: erg.id, url: erg.url, bild: erg.bild });
+    merken();
+    console.log(`\nHochgeladen (privat): ${erg.url}` + (erg.bild === true ? '' : ' – Vorschaubild: ' + erg.bild));
+    benachrichtigen(`Neues Tagesvideo auf YouTube (privat): „${text.titel}“. Bitte anschauen und in YouTube Studio freigeben.`);
+    return 0;
+  } catch (e) { eintrag.fehler = e.message; merken(); console.log('Fehler: ' + e.message); benachrichtigen('Tagesvideo: ' + e.message); return 1; }
+}
+function benachrichtigen(text) { try { spawn('notify-send', ['Blockfilm', text], { stdio: 'ignore' }); } catch {} }
+
 function liste(ordner) {
   try {
     return fs.readdirSync(ordner).filter(f => /\.(txt|blockfilm|bf)$/i.test(f)).map(f => {
@@ -428,7 +474,7 @@ async function anfrage(req, res) {
       let text = null;
       if (skriptDatei && fs.existsSync(skriptDatei)) text = fs.readFileSync(skriptDatei, 'utf8');
       let einst = {}; try { einst = JSON.parse(fs.readFileSync(path.join(HOME, 'Blockfilm', 'einstellungen.json'), 'utf8')); } catch {}
-      return json(res, { einstellungen: einst, datei: skriptDatei, text, render: renderModus, nurBild, aus: ausDatei, aufl: extraAufl, renderStimme, renderTempo, renderAlter, skripte: SKRIPTE, videos: VIDEOS, material: MATERIAL });
+      return json(res, { einstellungen: einst, datei: skriptDatei, text, render: renderModus, tagesvideo: tagesModus, nurBild, aus: ausDatei, aufl: extraAufl, renderStimme, renderTempo, renderAlter, skripte: SKRIPTE, videos: VIDEOS, material: MATERIAL });
     }
     if (p === '/api/aussprache' && req.method === 'GET') return json(res, { liste: eigeneLesen() });
     if (p === '/api/aussprache' && req.method === 'POST') {
@@ -655,6 +701,56 @@ async function anfrage(req, res) {
       }
       return json(res, { ok: true });
     }
+    // ---------- YouTube und Tagesvideo ----------
+    if (p === '/api/youtube/status') return json(res, Object.assign(ytStatus(), { tagesvideo: tagesEinstellungen(), timer: await tagesTimerAn(), letzte: tagesListe().slice(-5).reverse() }));
+    if (p === '/api/youtube/client' && req.method === 'POST') {
+      const o = JSON.parse((await koerper(req)).toString('utf8'));
+      try { ytClientSetzen(String(o.text || '')); return json(res, { ok: true }); } catch (e) { return json(res, { ok: false, fehler: e.message }); }
+    }
+    if (p === '/api/youtube/verbinden') {
+      try { res.writeHead(302, { location: ytAnmeldeAdresse(`http://127.0.0.1:${server.address().port}/api/youtube/rueckruf`) }); return res.end(); }
+      catch (e) { res.writeHead(200, { 'content-type': 'text/html; charset=utf-8' }); return res.end(`<p style="font:18px sans-serif">${e.message}</p>`); }
+    }
+    if (p === '/api/youtube/rueckruf') {
+      const seite = t => { res.writeHead(200, { 'content-type': 'text/html; charset=utf-8' }); res.end(`<!doctype html><meta charset="utf-8"><body style="font:20px sans-serif;background:#1b1e24;color:#eee;padding:40px">${t}<p style="font-size:15px;opacity:.7">Du kannst dieses Fenster jetzt schließen.</p></body>`); };
+      if (url.searchParams.get('error')) return seite('⚠ Abgebrochen: ' + url.searchParams.get('error'));
+      try { const k = await ytCodeEinloesen(url.searchParams.get('code'), `http://127.0.0.1:${server.address().port}/api/youtube/rueckruf`); return seite('✓ Blockfilm ist mit YouTube verbunden' + (k ? ` (Kanal „${k.name.replace(/[<>&]/g, '')}“).` : '.')); }
+      catch (e) { return seite('⚠ ' + String(e.message).replace(/[<>&]/g, '')); }
+    }
+    if (p === '/api/youtube/trennen' && req.method === 'POST') { ytTrennen(); return json(res, { ok: true }); }
+    if (p === '/api/tagesvideo/einstellen' && req.method === 'POST') {
+      const o = JSON.parse((await koerper(req)).toString('utf8'));
+      const t = { an: !!o.an, alter: ['0-2', '3-5', '6-9', '10+'].includes(o.alter) ? o.alter : '3-5', uhrzeit: /^\d{1,2}:\d{2}$/.test(o.uhrzeit || '') ? o.uhrzeit : '02:00' };
+      einstellungenSchreiben({ tagesvideo: t });
+      try { await tagesTimerSetzen(t); } catch (e) { return json(res, { ok: false, fehler: 'Zeitplan: ' + e.message }); }
+      return json(res, { ok: true, timer: await tagesTimerAn() });
+    }
+    if (p === '/api/tagesvideo/jetzt' && req.method === 'POST') {
+      spawn('systemd-run', ['--user', '--unit=blockfilm-tagesvideo-jetzt-' + Date.now(), path.join(HIER, 'bin', 'tagesvideo')], { stdio: 'ignore', detached: true }).unref();
+      return json(res, { ok: true });
+    }
+    if (p === '/api/tagesvideo/auftrag') {
+      // Thema: die nächste Zeile aus ~/Blockfilm/tagesthemen.txt, sonst schlägt die KI eines vor
+      const t = tagesEinstellungen(), bisher = tagesListe().map(x => x.thema);
+      let thema = null;
+      try {
+        const zeilen = fs.readFileSync(TAGES_THEMEN, 'utf8').split('\n').map(z => z.trim()).filter(z => z && !z.startsWith('#'));
+        thema = zeilen.find(z => !bisher.includes(z)) || null;
+      } catch {}
+      try { if (!thema) thema = await kiTagesThema({ alter: t.alter, bisher: bisher.concat(alleKiThemen()) }); }
+      catch (e) { return json(res, { ok: false, fehler: e.message }); }
+      const stempel = new Date().toISOString().slice(0, 10);
+      tagesAuftrag = { thema, alter: t.alter, aus: path.join(VIDEOS, 'Tagesvideos', `${stempel} ${thema.replace(/[^\wäöüÄÖÜß\- ]+/g, '').trim().slice(0, 70)}.mp4`) };
+      fs.mkdirSync(path.dirname(tagesAuftrag.aus), { recursive: true });
+      console.log('Thema: ' + thema);
+      return json(res, Object.assign({ ok: true }, tagesAuftrag));
+    }
+    if (p === '/api/tagesvideo/fertig' && req.method === 'POST') {
+      const o = JSON.parse((await koerper(req)).toString('utf8'));
+      json(res, { ok: true });
+      tagesAbschliessen(o).then(c => beenden(c), e => { console.error(e); beenden(1); });
+      return;
+    }
     if (p === '/api/fertig' && req.method === 'POST') {
       const o = JSON.parse((await koerper(req)).toString('utf8'));
       json(res, { ok: true });
@@ -712,11 +808,11 @@ async function exporteLesen() {
   const ps = await ausfuehren('ps', ['-eo', 'pid=,etimes=,args=']);
   for (const z of ps.split('\n')) {
     const m = /^\s*(\d+)\s+(\d+)\s+(.*)$/.exec(z);
-    if (!m || !/server\.mjs/.test(m[3]) || !/--render/.test(m[3])) continue;
+    if (!m || !/server\.mjs/.test(m[3]) || !/--render|--tagesvideo/.test(m[3])) continue;
     const pid = +m[1], args = m[3].split(/\s+/);
     const oi = args.indexOf('-o');
     const ziel = oi >= 0 ? args[oi + 1] : null;
-    const skript = args[args.indexOf('--render') + 1];
+    const skript = args.includes('--render') ? args[args.indexOf('--render') + 1] : 'Tagesvideo';
     let text = '';
     try { text = JSON.parse(fs.readFileSync(path.join(EXPORT_STATUS, pid + '.json'), 'utf8')).text; } catch {}
     if (!text && ziel) {
@@ -780,10 +876,10 @@ server.on('error', e => {
 server.listen(PORT, '127.0.0.1', () => {
   const port = server.address().port;
   if (renderModus) {
-    if (!skriptDatei) { console.error('Bitte ein Skript angeben: blockfilm --render mein-film.txt'); process.exit(2); }
-    console.log(`Blockfilm rendert ${skriptDatei} …`);
+    if (!skriptDatei && !tagesModus) { console.error('Bitte ein Skript angeben: blockfilm --render mein-film.txt'); process.exit(2); }
+    console.log(tagesModus ? 'Blockfilm macht das Tagesvideo …' : `Blockfilm rendert ${skriptDatei} …`);
     const profil = fs.mkdtempSync(path.join(os.tmpdir(), 'blockfilm-render-'));
-    browser = spawn('chromium', ['--headless=new', '--no-first-run', '--no-default-browser-check', `--user-data-dir=${profil}`, ...(process.env.BF_SOFTWARE ? ['--use-angle=swiftshader', '--enable-unsafe-swiftshader'] : ['--use-angle=gl', '--enable-gpu', '--ignore-gpu-blocklist']), '--disable-background-timer-throttling', '--disable-renderer-backgrounding', `http://127.0.0.1:${port}/?render=1`], { stdio: 'ignore' });
+    browser = spawn('chromium', ['--headless=new', '--no-first-run', '--no-default-browser-check', `--user-data-dir=${profil}`, ...(process.env.BF_SOFTWARE ? ['--use-angle=swiftshader', '--enable-unsafe-swiftshader'] : ['--use-angle=gl', '--enable-gpu', '--ignore-gpu-blocklist']), '--disable-background-timer-throttling', '--disable-renderer-backgrounding', `http://127.0.0.1:${port}/?render=1${tagesModus ? '&tagesvideo=1' : ''}`], { stdio: 'ignore' });
     browser.on('exit', () => { fs.rmSync(profil, { recursive: true, force: true }); });
   } else if (nurServer) {
     console.log(`Blockfilm-Server läuft auf http://127.0.0.1:${port}/`);
