@@ -155,7 +155,7 @@ sprecher "Dann gäbe es keinen Sturm. Alles hätte Zeit, langsamer zu werden."
 verstecke2d schnecke
 hintergrund weltraum in 2
 stern2d sonne2 bei 0 0 groesse 6 farbe gelb
-planet2d erde2 bei 17 0 groesse 5 art erde
+planet2d erde2 bei 14 0 groesse 5 art erde
 sprecher "Aber etwas wäre sehr seltsam. Die Erde fliegt ja immer noch um die Sonne. Einmal im Jahr."
 umlauf2d erde2 um sonne2 periode 16
 & ton schwung

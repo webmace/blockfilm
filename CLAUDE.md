@@ -29,6 +29,8 @@ Erklärfilm-Generator: Claude schreibt ein Skript in einer deutschen Befehlsspra
 ## Maskottchen Glib
 - `app/js/maskottchen.js` (Engine, beide Renderer): Befehl `maskottchen2d` (Typ `schleim`), `maskottchen aus`, Glib als Erzähler: in jedem Kapitel fest in einer freien unteren Ecke, unabhängig von der Kamera (Hook `BF.nachKompilieren`, Objekte mit `auto: true`). `kind2d mia` wird zu Glib (kleiner).
 - Zeichnung und Verhalten im neuen Stil: `OB.schleim` / `HF.bewegung.schleim` in `hf/figuren2d.js`. Wird beim Heranzoomen räumlicher (Tiefe, Glanz, Bläschen-Parallaxe).
+- Glibs Platz (`belegung` in maskottchen.js) wird im Bild gemessen (mit Kamera), auch Zeiger zählen; sind beide Ecken belegt, hüpft er kurz aus dem Bild.
+- Merk-Tafeln am Rand schieben das Bild zur Seite (`tafelSchub` in welt2d.js `kamera()`), nur so weit wie nötig. Zähler ohne Dauer verschwinden 7 s nach dem Zählen bzw. an der nächsten Kapitel- oder Merkkarte (wissen.js). Namensschilder bleiben im Bild und über den Untertiteln (komponiere.js).
 - Einmalige Dinge (Mond, Sonne, Erde …, gleicher Name): `neuesObjekt` (welt2d.js) blendet das alte aus, wenn ein neues dazukommt.
 - Glib ist die Erzählstimme: `BF.vorKompilieren` (Hook in skript.js, läuft vor dem Übersetzen) schreibt in maskottchen.js Sprechersätze über Glib in die Ich-Form um (`BF.glibIchForm`). Die Zeilenzahl bleibt dabei gleich.
 - ⚫/🕳-Bildzeichen, die „Loch“ heißen oder so beschriftet sind, werden zum echten schwarzen Loch (`typ 'loch'`, dinge.js). Gibt es im Film ein Loch, malt der alte Zeichner den Weltraum (Gravitationslinse); seine Leinwand liegt dann unter den SVG-Dingen (`P.mitLoch`), sonst darüber.
@@ -45,6 +47,7 @@ Erklärfilm-Generator: Claude schreibt ein Skript in einer deutschen Befehlsspra
 - Film-Leiste oben (`#flListe`): zuerst die fertigen Videos (aus `/api/exporte`, Klick spielt sie im `#spieler` ab, wird alle 30 s neu geladen), dann KI-Filme, dann Themen-Filme.
 - Jeder neue oder geänderte KI-Film wird nach dem Speichern automatisch in die Export-Warteschlange `/api/stapel` gestellt (Auflösung aus `#gal-aufl`).
 - Button „🎬 Alle Filme“ (`#galerie`, ui.js): fertige Videos (Abspielen im `#spieler`), KI-Filme, Themen-Filme, eigene Skripte; jeweils Ansehen oder Exportieren.
+- Nachtfilme: `~/Blockfilm/Nachtfilme/*.txt` sind aus `BF.THEMEN` erzeugt (`film`-Zeile + `vorschaubild` + `ohnevideo` + `BF.themaSkript(th, '3-5')`); nach Änderungen an den Themen neu erzeugen. `bin/nachtfilme` baut fehlende Videos (danach auch alle KI-Filme nach `~/Videos/Blockfilm/KI/`), `bin/nachbessern name …` baut einzelne neu.
 - Exporte von dort gehen in die Warteschlange `/api/stapel` (server.mjs). Sie laufen nacheinander als eigene Prozesse `server.mjs --render … --stimme … --sprechtempo … --alter …`. Themen-Filme werden vorher als Skript nach `~/.cache/blockfilm/stapel/` geschrieben.
 
 ## KI-Regie-Prüfung

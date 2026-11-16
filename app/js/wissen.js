@@ -241,9 +241,19 @@
     // ein neuer Zähler mit gleichem Titel ersetzt den alten
     for (const u of F.ueber) if (u.typ === 'zaehler' && u.titel === titel && u.t1 > t) u.t1 = t;
     const alt = F.ueber.filter(u => u.typ === 'zaehler').length;
-    F.ueber.push({ typ: 'zaehler', t0: t, t1: t + d, titel, einheit, von, bis, lauf, nk, platz: alt });
+    // ohne Dauer: nach dem Zählen noch 7 Sekunden stehen lassen (und spätestens bei der nächsten Kapitel- oder Merkkarte weg)
+    F.ueber.push({ typ: 'zaehler', t0: t, t1: t + (Number.isFinite(d) ? d : lauf + 7), titel, einheit, von, bis, lauf, nk, platz: alt, offen: !Number.isFinite(d) });
     return 0;
   };
+  BF.nachKompilieren = BF.nachKompilieren || [];
+  BF.nachKompilieren.push(function zaehlerKuerzen(F) {
+    const grenzen = [...F.texte.filter(x => x.karte).map(x => x.t0), ...(F.ueber || []).filter(u => u.typ === 'tafel').map(u => u.t0)].sort((a, b) => a - b);
+    for (const u of F.ueber || []) {
+      if (u.typ !== 'zaehler' || !u.offen) continue;
+      const g = grenzen.find(x => x > u.t0 + 0.5);
+      if (g !== undefined) u.t1 = Math.min(u.t1, g);
+    }
+  });
   Z.stoppuhr = Z.timer = function (w, t, h) {
     const F = h.F;
     const was = w.pk();

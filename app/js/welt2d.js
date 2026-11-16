@@ -671,6 +671,20 @@
     }
     return p;
   }
+  // wie weit das Bild für eine Merk-Tafel zur Seite rücken muss (in Bildeinheiten): nur so weit, dass die Dinge
+  // neben der Tafel Platz haben, und nie so weit, dass auf der anderen Seite etwas aus dem Bild fällt
+  function tafelSchub(F, u, kx, ky, z) {
+    const t = u.t0 + 0.05, sg = u.ort === 'rechts' ? 1 : -1;
+    let innen = -Infinity, aussen = -Infinity;
+    for (const o of F.w2d.liste) {
+      if (o.typ === 'schleim' || !(t >= o.t0 && t < (o.t1 ?? Infinity))) continue;
+      const q = pos(F, o, t), sx = sg * (q[0] - kx) * z, r = Math.min(30, o.r) * z * (o.typ === 'zahl' ? 0.7 : 1);
+      innen = Math.max(innen, sx + r);   // am weitesten zur Tafel hin
+      aussen = Math.max(aussen, -sx + r); // am weitesten auf der anderen Seite
+    }
+    if (innen === -Infinity) return 0;
+    return clamp(Math.min(innen - 30, 48 - aussen), 0, 20);
+  }
   function kamera(F, t) {
     let x = 0, y = 0, z = 1;
     for (const k of F.w2d.kam) {
@@ -680,6 +694,13 @@
       if (p && p.obj) p = pos(F, F.w2d.obj[p.obj], t);
       if (p) { x = lerp(x, p[0], u); y = lerp(y, p[1], u); }
       if (k.zoom !== null) z = lerp(z, k.zoom, u);
+    }
+    // Steht eine Merk-Tafel am Rand, rückt das Bild zur anderen Seite, damit die Tafel nichts verdeckt
+    for (const u of F.ueber || []) {
+      if (u.typ !== 'tafel' || u.ort === 'mitte' || t < u.t0 - 0.6 || t > u.t1 + 0.6) continue;
+      const ein = sanft(clamp((t - (u.t0 - 0.6)) / 0.9, 0, 1)), aus = sanft(clamp((u.t1 + 0.6 - t) / 0.9, 0, 1));
+      if (u._schub === undefined) u._schub = tafelSchub(F, u, x, y, z);
+      x += (u.ort === 'rechts' ? 1 : -1) * u._schub * Math.min(ein, aus) / z;
     }
     // Wackeln (z. B. bei Explosionen in Was-wäre-wenn-Filmen)
     for (const w of F.w2d.wackeln || []) {
@@ -2150,12 +2171,16 @@ sprecher "Mmh, eine Pizza! Und wir sind vier Kinder."
 sprecher "Damit es gerecht ist, schneiden wir die Pizza in vier gleich große Stücke."
 sprecher "Jedes Kind bekommt ein Stück."
 pizzaweg2d pizza anzahl 1
+& symbol2d stueck1 "🍕" bei -15 9 groesse 4
 sprecher "Das erste Kind nimmt sein Stück."
 pizzaweg2d pizza anzahl 1
+& symbol2d stueck2 "🍕" bei 15 9 groesse 4
 sprecher "Das zweite Kind."
 pizzaweg2d pizza anzahl 1
+& symbol2d stueck3 "🍕" bei -15 -9 groesse 4
 sprecher "Das dritte."
 pizzaweg2d pizza anzahl 1
+& symbol2d stueck4 "🍕" bei 15 -9 groesse 4
 sprecher "Und das vierte. Alle haben gleich viel. Das ist Teilen!"
 & ton tada
 sprecher "Teilen heißt: Man macht aus einem Ganzen gleich große Teile."
@@ -2167,6 +2192,10 @@ verstecke2d pizza
 & verstecke2d kid2
 & verstecke2d kid3
 & verstecke2d kid4
+& verstecke2d stueck1
+& verstecke2d stueck2
+& verstecke2d stueck3
+& verstecke2d stueck4
 kapitel "6. Formen" 3
 form2d kr bei -27 4 groesse 6 art kreis farbe rot
 & text2d "Kreis" an kr 5
@@ -3929,7 +3958,7 @@ warte 2
 verstecke2d auge
 & verstecke2d luft
 sprecher "Und abends? Da wird der Himmel oft orange und rot."
-bewege2d sonne zu -46 -9 in 4
+& bewege2d sonne zu -46 -9 in 4
 & hintergrund abend in 4
 sprecher "Am Abend steht die Sonne ganz tief."
 sprecher "Ihr Licht muss einen viel längeren Weg durch die Luft nehmen."
@@ -4451,7 +4480,7 @@ sprecher "Auf der hellen Seite ist Tag."
 & text "Tag" 3 oben farbe gelb
 warte 1
 sprecher "Die andere Seite ist dunkel."
-& zeiger von 92 75 nach 82 58 farbe hellblau "dunkel" fuer 6
+& zeiger von 90 76 nach 74 56 farbe hellblau "dunkel" fuer 6
 sprecher "Auf der dunklen Seite ist Nacht."
 & text "Nacht" 3 oben farbe hellblau
 warte 1
@@ -4487,11 +4516,11 @@ sprecher "Dann sieht es aus, als ob sich das Zimmer dreht. Aber du drehst dich!"
 warte 2
 sprecher "Und jetzt etwas Lustiges."
 sprecher "Wenn du morgens aufwachst, gehen andere Kinder gerade ins Bett!"
-& zeiger von 92 75 nach 82 58 farbe hellblau "hier ist jetzt Nacht" fuer 5
+& zeiger von 84 80 nach 68 57 farbe hellblau "hier ist jetzt Nacht" fuer 5
 sprecher "Sie wohnen auf der anderen Seite der Erde."
 sprecher "Bei ihnen ist Nacht, wenn bei dir Tag ist."
 warte 2
-planet2d mond bei 46 -14 groesse 2.2 art mond
+planet2d mond bei 34 -12 groesse 2.6 art mond
 & ton plopp
 sprecher "Und wer leuchtet in der Nacht? Der Mond!"
 & text2d "Mond" an mond 5
@@ -4519,7 +4548,7 @@ kapitel "Der Mond" 3
 planet2d erde bei 0 0 groesse 8 art erde
 ton plopp
 sprecher "Schau! Die Erde."
-planet2d mond bei 30 0 groesse 2.2 art mond
+planet2d mond bei 22 0 groesse 3 art mond
 ton plopp
 sprecher "Und der Mond. Er ist klein."
 umlauf2d mond um erde periode 9
@@ -4544,7 +4573,7 @@ planet2d erde bei 0 0 groesse 8 art erde
 ton plopp
 sprecher "Das ist unsere Erde."
 & text2d "Erde" an erde 4
-planet2d mond bei 30 0 groesse 2.2 art mond
+planet2d mond bei 22 0 groesse 3 art mond
 ton plopp
 sprecher "Und das ist der Mond. Er ist viel kleiner."
 & text2d "Mond" an mond 4

@@ -26,15 +26,27 @@
   const SCHWEB_HG = ['weltraum', 'all', 'space', 'mikro', 'meer'];
   function hgBei(F, t) { let a = 'weltraum'; for (const b of F.w2d.hg) if (b.t0 <= t) a = b.art; return a; }
   function belegung(F, x, y, t0, t1) {
-    // wie sehr eine Stelle in der Zeit [t0, t1] von anderen Objekten belegt ist
-    const pos = BF.w2dIntern.pos;
+    // wie sehr eine Stelle im Bild (Glib steht fest im Bild, die Kamera bewegt ihn nicht) in der Zeit [t0, t1] belegt ist
+    const { pos, kamera } = BF.w2dIntern;
     let summe = 0;
-    for (const t of [t0 + 0.5, (t0 + t1) / 2, t1 - 0.3]) {
+    for (const t of [t0 + 0.4, (t0 + t1) / 2, t1 - 0.3]) {
+      const K = kamera(F, t);
       for (const o of F.w2d.liste) {
         if (o.typ === 'schleim' || !(t >= o.t0 && t < (o.t1 ?? Infinity))) continue;
-        const p = pos(F, o, t), r = Math.min(30, o.typ === 'zeitleiste' ? o.r / 2 : o.r);
-        const d = Math.hypot(p[0] - x, (p[1] + r * 0.4) - (y + 4));
-        summe += Math.max(0, r + 6 - d);
+        const q = pos(F, o, t), sx = (q[0] - K.x) * K.z, sy = (q[1] - K.y) * K.z;
+        // Sonne und Sterne leuchten weit, Bildzeichen sind etwas kleiner als ihr Wert
+        const roh = o.typ === 'zeitleiste' ? o.r / 2 : o.typ === 'stern' ? o.r * 2.2 : o.typ === 'zahl' ? o.r * 0.75 : o.r;
+        const r = Math.min(30, roh * K.z);
+        const d = Math.hypot(sx - x, (sy + r * 0.4) - (y + 4));
+        summe += Math.max(0, r + 7 - d);
+      }
+      // Zeiger und Hinweise (in Prozent des Bildes): Anfang mit Beschriftung und Spitze freihalten
+      for (const z of F.zeichen || []) {
+        if (z.typ !== 'zeiger' || !(t >= z.t0 && t < z.t1)) continue;
+        for (const [px, py, r] of [[z.x1, z.y1, 9], [z.x2, z.y2, 4]]) {
+          const d = Math.hypot(px - 50 - x, (50 - py) * 0.5625 - (y + 4));
+          summe += Math.max(0, r + 7 - d);
+        }
       }
     }
     return summe;
@@ -66,34 +78,40 @@
       const start = k0 + 0.2, ende = k1 - 0.15;
       const schweben = SCHWEB_HG.includes(hgBei(F, start + 0.5));
       const y = schweben ? -15 : -11;
-      // Ecke Satz für Satz wählen; nur wechseln, wenn die andere Ecke deutlich freier ist
-      let seite = belegung(F, -42, y, start, saetze[0].t1) <= belegung(F, 42, y, start, saetze[0].t1) ? -1 : 1;
-      const startSeite = seite, wechsel = [];
+      // Platz Satz für Satz wählen: linke Ecke (-1), rechte Ecke (1) oder kurz aus dem Bild (0), wenn beide belegt sind
+      const kosten = (sd, t0, t1) => (sd === 0 ? 14 : belegung(F, sd * 42, y, t0, t1));
+      const bester = (t0, t1) => [-1, 1, 0].map(sd => [sd, kosten(sd, t0, t1)]).sort((a, b) => a[1] - b[1])[0];
+      let [seite] = bester(start, saetze[0].t1);
+      const plan = [{ t: start, seite }];
       for (const s of saetze.slice(1)) {
-        const hier = belegung(F, seite * 42, y, s.t0, s.t1), dort = belegung(F, -seite * 42, y, s.t0, s.t1);
-        if (hier > dort + 8) { seite = -seite; wechsel.push([s.t0 - 0.5, seite]); }
+        const [sd, k] = bester(s.t0 - 0.3, s.t1);
+        if (sd !== seite && kosten(seite, s.t0 - 0.3, s.t1) > k + 6) { seite = sd; plan.push({ t: s.t0 - 0.5, seite }); }
       }
-      const o = neuesObjekt(F, { typ: 'schleim', name: 'glib_erzaehler' + ki, t0: start, p: [startSeite * 60, y], r: 8, schweben, auto: true });
-      // Ablauf in zeitlicher Reihenfolge: hereinhüpfen, zwischen Sätzen herumlaufen, bei Bedarf Ecke wechseln, hinaushüpfen
-      const ereignisse = wechsel.filter(([t]) => t >= start + 1.2 && t <= ende - 1.5).map(([t, neu]) => ({ t, neu }));
-      saetze.slice(1).forEach((s2, i) => { if (i % 2 === 1) ereignisse.push({ t: s2.t0 - 0.05, laufen: true }); });
+      const ersteSeite = plan.find(e => e.seite !== 0)?.seite || -1;
+      const o = neuesObjekt(F, { typ: 'schleim', name: 'glib_erzaehler' + ki, t0: start, p: [ersteSeite * 60, y], r: 8, schweben, auto: true });
+      // Ablauf in zeitlicher Reihenfolge: hereinhüpfen, zwischen Sätzen etwas herumlaufen (nur wenn dort Platz ist), Platz wechseln, hinaushüpfen
+      const ereignisse = plan.slice(1).filter(e => e.t >= start + 1.2 && e.t <= ende - 1.5).map(e => ({ t: e.t, neu: e.seite }));
+      saetze.slice(1).forEach((s2, i) => { if (i % 2 === 1) ereignisse.push({ t: s2.t0 - 0.05, laufen: true, t1: s2.t1 }); });
       ereignisse.sort((a2, b2) => a2.t - b2.t);
-      let seiteJetzt = startSeite, x = startSeite * 41, frei = start + 0.9, schritt = 0;
-      o.segs.push({ typ: 'zu', t0: start, t1: frei, von: [startSeite * 60, y], zu: [x, y] });
+      let seiteJetzt = plan[0].seite, x = seiteJetzt ? seiteJetzt * 41 : ersteSeite * 60, frei = start + 0.9, schritt = 0, raus = ersteSeite;
+      if (seiteJetzt) o.segs.push({ typ: 'zu', t0: start, t1: frei, von: [seiteJetzt * 60, y], zu: [x, y] });
       for (const e of ereignisse) {
         if (e.t < frei + 0.3 || e.t > ende - 1.6) continue;
-        if (e.neu) { // Ecke belegt: hinaus und auf der anderen Seite herein
-          o.segs.push({ typ: 'zu', t0: e.t, t1: e.t + 0.45, von: [x, y], zu: [seiteJetzt * 60, y] });
-          seiteJetzt = e.neu; x = seiteJetzt * 41;
-          o.segs.push({ typ: 'zu', t0: e.t + 0.45, t1: e.t + 0.9, von: [seiteJetzt * 60, y], zu: [x, y] });
+        if (e.neu !== undefined) {
+          if (e.neu === seiteJetzt) continue;
+          if (seiteJetzt) { raus = seiteJetzt; o.segs.push({ typ: 'zu', t0: e.t, t1: e.t + 0.45, von: [x, y], zu: [seiteJetzt * 60, y] }); }
+          seiteJetzt = e.neu;
+          if (seiteJetzt) { x = seiteJetzt * 41; o.segs.push({ typ: 'zu', t0: e.t + 0.45, t1: e.t + 0.9, von: [seiteJetzt * 60, y], zu: [x, y] }); }
+          else x = raus * 60;
           frei = e.t + 0.9;
-        } else { // ein Stück Richtung Mitte und wieder zurück
+        } else if (seiteJetzt) { // ein Stück Richtung Mitte und wieder zurück, aber nur, wenn dort frei ist
           const ziel = seiteJetzt * (schritt++ % 2 === 0 ? 33 : 42);
+          if (ziel !== x && belegung(F, ziel, y, e.t, Math.max(e.t + 1.2, e.t1 || e.t)) > 2) continue;
           o.segs.push({ typ: 'zu', t0: e.t, t1: e.t + 1.1, von: [x, y], zu: [ziel, y] });
           x = ziel; frei = e.t + 1.1;
         }
       }
-      o.segs.push({ typ: 'zu', t0: Math.max(frei, ende - 0.8), t1: Math.max(frei, ende - 0.8) + 0.8, von: [x, y], zu: [seiteJetzt * 60, y] });
+      if (seiteJetzt) o.segs.push({ typ: 'zu', t0: Math.max(frei, ende - 0.8), t1: Math.max(frei, ende - 0.8) + 0.8, von: [x, y], zu: [seiteJetzt * 60, y] });
       o.t1 = ende + 0.05;
       if (erster) { // beim ersten Auftritt kurz ein Namensschild
         w2d(F).texte.push({ t0: start + 1, t1: start + 4, text: BF.MASKOTTCHEN_NAME, an: { obj: o.name } });

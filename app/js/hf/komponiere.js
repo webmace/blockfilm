@@ -439,6 +439,9 @@ ${HF.SKRIPTE.map(s => `<script src="${basis}${s}"></script>`).join('\n')}
         }
         let x = X(p[0]), y = Y(p[1]) - rr - 46 * E, x0 = X(p[0]), y0 = Y(p[1]) - rr;
         if (ziel) { x0 = X(ziel[0]); y0 = Y(ziel[1]); x = x0 + richtung[0] * 90 * E; y = y0 - richtung[1] * 90 * E; }
+        // das Schild bleibt ganz im Bild und über den Untertiteln
+        if (!sd.bw) { const sp = sd.b.firstElementChild; sd.bw = sp ? sp.offsetWidth : 0; sd.bh = sp ? sp.offsetHeight : 0; }
+        if (sd.bw) { x = clamp(x, sd.bw / 2 + W * 0.015, W - sd.bw / 2 - W * 0.015); y = clamp(y, sd.bh / 2 + H * 0.02, H * 0.8 - sd.bh / 2); }
         sd.l.setAttribute('x1', r2(x0)); sd.l.setAttribute('y1', r2(y0)); sd.l.setAttribute('x2', r2(x)); sd.l.setAttribute('y2', r2(y + (ziel ? 0 : 18 * E)));
         sd.l.setAttribute('stroke-width', r2(3 * E));
         sd.c.setAttribute('cx', r2(x0)); sd.c.setAttribute('cy', r2(y0)); sd.c.style.display = ziel ? '' : 'none';

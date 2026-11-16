@@ -1,0 +1,17 @@
+#!/usr/bin/env bash
+# Blockfilm: nach dem Nacht-Export einzelne Nachtfilme mit dem neuesten Stand noch einmal bauen
+#   bin/nachbessern name1 name2 …   (wartet, bis kein anderer Export läuft; das alte Video bleibt, bis das neue fertig ist)
+HIER="$(cd "$(dirname "$(readlink -f "$0")")/.." && pwd)"
+SKRIPTE="$HOME/Blockfilm/Nachtfilme"; AUS="$HOME/Videos/Blockfilm/Nachtfilme"; LOG="$AUS/protokoll.txt"
+for n in "$@"; do
+  while systemctl --user is-active -q blockfilm-nachtfilme.service || pgrep -f -- "server.mjs --render" >/dev/null; do sleep 120; done
+  echo "$(date '+%H:%M') $n: wird nachgebessert" >> "$LOG"
+  rm -f "$AUS/$n.teil.mp4"
+  if nice -n 19 ionice -c 3 systemd-inhibit --what=sleep:idle --who=Blockfilm --why="Filme werden gespeichert" \
+       "$HIER/bin/blockfilm" --render "$SKRIPTE/$n.txt" -o "$AUS/$n.teil.mp4" > "$AUS/.letzter-lauf.txt" 2>&1 \
+     && ffprobe -v error "$AUS/$n.teil.mp4" >/dev/null 2>&1; then
+    mv "$AUS/$n.teil.mp4" "$AUS/$n.mp4"; echo "$(date '+%H:%M') $n: nachgebessert" >> "$LOG"; notify-send "Blockfilm" "Film verbessert: $n" 2>/dev/null
+  else echo "$(date '+%H:%M') $n: Nachbessern FEHLER" >> "$LOG"; fi
+done
+# danach alles, was noch fehlt (z. B. Geister)
+exec "$HIER/bin/nachtfilme"
