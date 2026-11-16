@@ -100,7 +100,7 @@ Legt den Bildstil fest (`0-2`, `3-5`, `6-9`, `10+`): Farben, Schrift und wie leb
 ```
 vorschaubild "Schrumpelfinger?!"
 ```
-Das Vorschaubild (Thumbnail) für das Video: ein Standbild von diesem Moment, ohne Untertitel, mit dem Titel groß darüber (`bei 42` gibt den Moment in Sekunden an). Es wird beim Export als JPEG neben das Video gelegt (`film.mp4` → `film.jpg`) und in der Film-Leiste und in „Alle Filme“ gezeigt. Ohne den Befehl sucht Blockfilm selbst einen Moment, der zum Titel passt, und nimmt den Filmtitel. Der Titel weicht den Bildern aus (oben/unten, links/rechts).
+Das Vorschaubild (Thumbnail) für das Video, im Stil großer Wissens-Kanäle: Das wichtigste Ding in diesem Moment wird herangezoomt, die Farben werden kräftiger, der Rand dunkler, Untertitel verschwinden, und daneben stehen 1–3 Wörter in großer weißer Schrift (das letzte Wort gelb). Ein weißer Hintergrund wird durch einen tiefen Farbverlauf ersetzt. `bei 42` gibt den Moment in Sekunden an; steht die Zeile ganz am Anfang des Films, sucht Blockfilm den Moment selbst (passend zum Titel). Das Bild wird beim Export als JPEG neben das Video gelegt (`film.mp4` → `film.jpg`) und in der Film-Leiste und in „Alle Filme“ gezeigt. Ohne den Befehl wird aus dem Filmtitel ein kurzer Text gemacht.
 
 ## Musik und Töne
 

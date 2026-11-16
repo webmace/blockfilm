@@ -454,20 +454,30 @@ ${HF.SKRIPTE.map(s => `<script src="${basis}${s}"></script>`).join('\n')}
     }
     window.addEventListener('hf-seek', ev => zeige(ev.detail ? ev.detail.time : 0));
     window.__bfZeige = t => { tl.seek(t, true); zeige(t); };
-    // Vorschaubild: einen guten Moment zeigen, Untertitel und Karten weg, großer Titel darüber
+    // Vorschaubild im Stil großer Wissens-Kanäle: ein Hauptmotiv groß und herangezoomt, kräftige Farben,
+    // dunkler Rand, daneben 1–3 Wörter in großer weißer Schrift (das letzte Wort gelb). Untertitel und Karten sind weg.
+    HF.kurzTitel = function (titel) {
+      let t = String(titel || '').trim().replace(/[?!.]+$/, '');
+      const frage = /^(was|warum|wieso|weshalb|wie|wo|wer|wann|welche)\b/i.test(t);
+      t = t.replace(/^(was\s+wäre,?\s+wenn|was\s+würde\s+passieren,?\s+wenn|was,?\s+wenn|warum|wieso|weshalb|wie|was|wo|wer|wann)\s+/i, '');
+      t = t.replace(/^(ist|sind|wird|werden|kann|können|funktioniert|funktionieren|entsteht|entstehen|gibt\s+es|fällt|bleibt|passiert)\s+/i, '');
+      t = t.replace(/^(der|die|das|ein|eine|unser|unsere|dein|deine|es|man|du)\s+/i, '');
+      if (t.length > 22) t = t.split(/\s+/).slice(0, 3).join(' ');
+      return (t.charAt(0).toUpperCase() + t.slice(1)) + (frage ? '?' : '');
+    };
     window.__bfVorschaubild = () => {
       const V = F.vorschaubild || {};
       const sichtbar = (a, t) => a.t0 <= t && t < a.t1;
+      // Wortstämme aus dem Titel: Momente und Dinge, die dazu passen, werden bevorzugt
+      const norm = x => String(x || '').toLowerCase().replace(/ä/g, 'a').replace(/ö/g, 'o').replace(/ü/g, 'u').replace(/ß/g, 'ss');
+      const NICHT = /^(warum|wieso|weshalb|passiert|passieren|wurde|wuerde|waere|wenn|deine|unser|unsere|eigentlich|funktioniert|gaebe|keinen|immer|einfach|kommt|werden|wieder|nicht|unter|durch)/;
+      const SYN = { finge: ['hand', 'finge'], zehen: ['fuss', 'zehen'], erde: ['erde', 'planet'], herz: ['koerp', 'herz'], korpe: ['koerp'], himme: ['himme', 'sonne', 'licht', 'strahl'], schwa: ['loch', 'schwa'], virus: ['virus', 'viren'], viren: ['virus', 'viren'], dinos: ['dino'], handy: ['geraet', 'handy'] };
+      const staemme = [...new Set(norm(F.titel + ' ' + (V.text || '')).split(/[^a-z]+/).filter(x => x.length >= 4 && !NICHT.test(x)).map(x => x.slice(0, 5)))];
+      const passt = txt => { const n = norm(txt); return staemme.some(st => (SYN[st] || [st]).some(v => n.includes(v))); };
+      const objWorte = e => [e.o.name, e.o.typ, e.o.art, e.o.text, ...(F.w2d && F.w2d.texte || []).filter(x => x.an && x.an.obj === e.o.name).map(x => x.text)].join(' ');
       let t = Number.isFinite(V.t) ? clamp(V.t, 0, P.D - 0.05) : null;
       if (t === null) {
         let best = -1e9;
-        // Wortstämme aus dem Titel: Momente, in denen davon gesprochen wird oder es zu sehen ist, passen am besten
-        const norm = x => String(x || '').toLowerCase().replace(/ä/g, 'a').replace(/ö/g, 'o').replace(/ü/g, 'u').replace(/ß/g, 'ss');
-        const NICHT = /^(warum|wieso|weshalb|passiert|passieren|wurde|wuerde|waere|wenn|deine|unser|unsere|eigentlich|funktioniert|gaebe|keinen|immer|einfach|kommt|werden|wieder|nicht|unter|durch|unser)/;
-        const SYN = { finge: ['hand', 'finge'], zehen: ['fuss', 'zehen'], erde: ['erde', 'planet'], mond: ['mond'], sonne: ['sonne'], herz: ['koerp', 'herz'], korpe: ['koerp'] };
-        const staemme = [...new Set(norm(F.titel).split(/[^a-z]+/).filter(x => x.length >= 4 && !NICHT.test(x)).map(x => x.slice(0, 5)))];
-        const passt = txt => { const n = norm(txt); return staemme.some(st => (SYN[st] || [st]).some(v => n.includes(v))); };
-        const objWorte = e => [e.o.name, e.o.typ, e.o.art, ...(F.w2d && F.w2d.texte || []).filter(x => x.an && x.an.obj === e.o.name).map(x => x.text)].join(' ');
         const satzBei = x => (F.sprache || []).find(s => s.t0 <= x && x < s.t1);
         const kand = (F.sprache || []).map(s => (s.t0 + s.t1) / 2).filter(x => x > P.D * 0.04 && x < P.D * 0.8);
         if (!kand.length) kand.push(P.D * 0.3);
@@ -475,7 +485,7 @@ ${HF.SKRIPTE.map(s => `<script src="${basis}${s}"></script>`).join('\n')}
           if (P.texte.some(e => (e.art === 'karte' || e.art === 'titel') && sichtbar(e, x)) || P.ueber.some(e => sichtbar(e, x))) continue;
           if (F.blenden.some(b => b.t0 <= x && x < b.t1 + 0.5)) continue;
           let n = 0;
-          for (const e of P.objekte) if (e.t0 + 0.8 <= x && x < e.t1 - 0.4) n += e.o.auto ? 0.5 : Math.min(2, 0.6 + e.o.r / 12) + (passt(objWorte(e)) ? 2.5 : 0);
+          for (const e of P.objekte) if (e.t0 + 0.8 <= x && x < e.t1 - 0.4) n += e.o.auto ? 0.3 : Math.min(2.5, 0.6 + e.o.r / 10) + (passt(objWorte(e)) ? 3 : 0);
           const sz = satzBei(x);
           const wert = n + (sz && passt(sz.text) ? 2 : 0) - Math.abs(x / P.D - 0.3) * 3;
           if (wert > best) { best = wert; t = x; }
@@ -484,37 +494,71 @@ ${HF.SKRIPTE.map(s => `<script src="${basis}${s}"></script>`).join('\n')}
       }
       document.body.classList.add('vorschaubild');
       window.__bfZeige(t);
-      let text = String(V.text || F.titel || '').trim();
-      if (!V.text && /^(warum|wieso|weshalb|wie|was|wo|wer|wann|welche|kann|können|gibt)\b/i.test(text) && !/[?!.]$/.test(text)) text += '?';
-      const sch = stil.schrift, band = (stil.text && stil.text.band) || stil.palette.blau;
-      const lang = text.length, fs = W * (lang <= 14 ? 0.085 : lang <= 24 ? 0.068 : lang <= 40 ? 0.055 : 0.045);
+      const film = document.getElementById('film');
+      const fr = film.getBoundingClientRect(), sk = fr.width / W;
+      // Hauptmotiv: das größte sichtbare Ding, das zum Titel passt (Glib nur, wenn sonst nichts da ist)
+      let motiv = null, bestM = 0;
+      for (const e of P.objekte) {
+        if (!(e.t0 + 0.3 <= t && t < e.t1)) continue;
+        const el = document.getElementById(e.id);
+        if (!el || getComputedStyle(el).display === 'none' || getComputedStyle(el).visibility === 'hidden') continue;
+        const g = el.querySelector('svg,img,.zahl') || el, r = g.getBoundingClientRect();
+        if (r.width < 3 || r.height < 3) continue;
+        const k = { x0: (r.left - fr.left) / sk, y0: (r.top - fr.top) / sk, x1: (r.right - fr.left) / sk, y1: (r.bottom - fr.top) / sk };
+        const sx0 = Math.max(0, k.x0), sx1 = Math.min(W, k.x1), sy0 = Math.max(0, k.y0), sy1 = Math.min(H, k.y1);
+        if (sx1 - sx0 < 4 || sy1 - sy0 < 4) continue;
+        const wert = Math.sqrt((sx1 - sx0) * (sy1 - sy0)) * (passt(objWorte(e)) ? 2.5 : 1) * (e.o.auto ? 0.25 : 1);
+        if (wert > bestM) { bestM = wert; motiv = { x0: sx0, x1: sx1, y0: sy0, y1: sy1, id: e.id }; }
+      }
+      if (!motiv) motiv = { x0: W * 0.35, x1: W * 0.65, y0: H * 0.3, y1: H * 0.7 };
+      const mx = (motiv.x0 + motiv.x1) / 2, my = (motiv.y0 + motiv.y1) / 2, mw = motiv.x1 - motiv.x0, mh = motiv.y1 - motiv.y0;
+      // Text auf die Seite, auf der weniger ist; das Motiv rückt auf die andere Seite und wird größer
+      const textLinks = mx >= W * 0.5;
+      const z = clamp(Math.min(H * 0.62 / mh, W * 0.5 / mw), 1, 1.8);
+      const zx = textLinks ? W * 0.68 : W * 0.32, zy = H * 0.52;
+      const tx = clamp(zx - mx * z, W - W * z, 0), ty = clamp(zy - my * z, H - H * z, 0);
+      film.style.transformOrigin = '0 0';
+      film.style.transform = `translate(${r2(tx)}px,${r2(ty)}px) scale(${r2(z)})`;
+      film.style.filter = 'saturate(1.3) contrast(1.06)';
+      const px = mx * z + tx, py = my * z + ty; // Motiv nach dem Zoom
+      // weißer oder heller Hintergrund: stattdessen ein kräftiger, tiefer Verlauf (wirkt wie ein Weltraum-Hintergrund)
+      const hgJetzt = P.hg.filter(b => b.t0 <= t).pop();
+      if (hgJetzt && /^(weiss|hell|papier)$/.test(hgJetzt.art)) {
+        const tief = (stil.hg && stil.hg.all) || ['#1b2370', '#0d123f'];
+        film.querySelectorAll('.clip.hg').forEach(el => { el.style.visibility = 'hidden'; });
+        film.style.background = `radial-gradient(circle at ${r2(mx)}px ${r2(my)}px, ${HF.farbe.hell(tief[0], 0.18)}, ${tief[0]} 45%, ${tief[1]} 100%)`;
+      }
+      // Text
+      const text = String(V.text || HF.kurzTitel(F.titel) || '').trim().toUpperCase();
+      const worte = text.split(/\s+/).filter(Boolean);
+      const lang = text.length, fs = W * (lang <= 8 ? 0.115 : lang <= 14 ? 0.095 : lang <= 22 ? 0.078 : 0.062);
+      const schrift = String(stil.schrift.titel).replace(/"/g, "'"), gelb = stil.palette.gelb || '#ffd83a';
+      const html = worte.map((w, i) => `<span${i === worte.length - 1 && worte.length > 1 ? ` style="color:${gelb}"` : ''}>${esc(w)}</span>`).join(' ');
       const d = document.createElement('div');
       d.id = 'vorschauTitel';
-      d.innerHTML = `<div class="vt-schatten"></div><div class="vt-band" style="background:${band}"><span style="font-family:${String(sch.titel).replace(/"/g, "'")};font-weight:${sch.titelGewicht};font-size:${r2(fs)}px">${esc(sch.versal ? text.toUpperCase() : text)}</span></div>`;
+      d.style.cssText = `position:absolute;left:${r2(fr.left)}px;top:${r2(fr.top)}px;width:${W}px;height:${H}px;pointer-events:none;z-index:99999;overflow:hidden`;
+      d.innerHTML = `<div style="position:absolute;inset:0;background:radial-gradient(circle at ${r2(px)}px ${r2(py)}px,rgba(255,255,255,.22),rgba(255,255,255,0) ${r2(Math.max(mw, mh) * z * 0.75)}px)"></div>`
+        + `<div style="position:absolute;inset:0;background:radial-gradient(ellipse at ${r2(px)}px ${r2(py)}px,rgba(0,0,0,0) 35%,rgba(0,0,0,.5) 100%)"></div>`
+        + `<div style="position:absolute;inset:0;background:linear-gradient(${textLinks ? '90deg' : '270deg'},rgba(0,0,0,.35),rgba(0,0,0,0) 50%)"></div>`
+        + `<div class="vt-text" style="position:absolute;${textLinks ? 'left' : 'right'}:${r2(W * 0.05)}px;top:50%;transform:translateY(-50%);width:${r2(W * 0.44)}px;text-align:${textLinks ? 'left' : 'right'};font-family:${schrift},sans-serif;font-weight:900;font-size:${r2(fs)}px;line-height:.98;letter-spacing:-.01em;color:#fff;text-shadow:0 ${r2(H * 0.008)}px 0 rgba(0,0,0,.35),0 0 ${r2(H * 0.05)}px rgba(0,0,0,.45);overflow-wrap:break-word">${html}</div>`;
       const css = document.createElement('style');
-      css.textContent = `body.vorschaubild .txt,body.vorschaubild .uebl{display:none!important}
-#vorschauTitel{position:absolute;inset:0;pointer-events:none;z-index:99999}
-#vorschauTitel .vt-schatten{position:absolute;left:0;right:0;top:0;height:55%;background:linear-gradient(rgba(0,0,0,.38),rgba(0,0,0,0))}
-#vorschauTitel .vt-band{position:absolute;left:${r2(W * 0.04)}px;top:${r2(H * 0.07)}px;max-width:${r2(W * 0.62)}px;padding:${r2(H * 0.018)}px ${r2(W * 0.024)}px ${r2(H * 0.026)}px;border-radius:${r2(H * 0.03)}px;transform:rotate(-2.5deg);box-shadow:0 ${r2(H * 0.014)}px 0 rgba(0,0,0,.3)}
-#vorschauTitel span{display:block;color:#fff;line-height:1.05;letter-spacing:.01em;text-shadow:0 ${r2(H * 0.006)}px 0 rgba(0,0,0,.25)}`;
+      css.textContent = 'body.vorschaubild .txt,body.vorschaubild .uebl,body.vorschaubild .schilde{display:none!important}';
       document.head.appendChild(css);
-      const film = document.getElementById('film');
-      film.appendChild(d);
-      // Titel oben oder unten, je nachdem, wo er weniger verdeckt
-      const fr = film.getBoundingClientRect(), sk = fr.width / W;
-      const kisten = [...film.querySelectorAll('.clip.obj')].filter(el => getComputedStyle(el).display !== 'none' && getComputedStyle(el).visibility !== 'hidden' && +getComputedStyle(el).opacity > 0.05)
-        .map(el => el.querySelector('svg,img,.zahl') || el).map(el => el.getBoundingClientRect()).filter(r => r.width > 2 && r.height > 2)
-        .map(r => ({ x0: (r.left - fr.left) / sk, y0: (r.top - fr.top) / sk, x1: (r.right - fr.left) / sk, y1: (r.bottom - fr.top) / sk }));
-      const bandEl = d.querySelector('.vt-band'), bh = bandEl.offsetHeight, bw = bandEl.offsetWidth;
-      // Kästen etwas kleiner nehmen (die Grafiken füllen ihr Feld nicht ganz)
-      const klein = kisten.map(k => { const dx = (k.x1 - k.x0) * 0.08, dy = (k.y1 - k.y0) * 0.08; return { x0: k.x0 + dx, x1: k.x1 - dx, y0: k.y0 + dy, y1: k.y1 - dy }; });
-      const rand = H * 0.04, ueberdeckt = (x, y) => klein.reduce((s, k) => s + Math.max(0, Math.min(k.x1, x + bw + rand) - Math.max(k.x0, x - rand)) * Math.max(0, Math.min(k.y1, y + bh + rand) - Math.max(k.y0, y - rand)), 0);
-      const xl = W * 0.04, xr = W - bw - W * 0.04, yo = H * 0.07, yu = H - bh - H * 0.07;
-      const lagen = [[xl, yo, 1], [xr, yo, 1.15], [xl, yu, 1.3], [xr, yu, 1.4]].map(([x, y, f]) => ({ x, y, w: (ueberdeckt(x, y) + 1) * f }));
-      const lage = lagen.reduce((a, b) => (b.w < a.w ? b : a));
-      bandEl.style.left = r2(lage.x) + 'px'; bandEl.style.top = r2(lage.y) + 'px';
-      if (lage.y === yu) { const sch = d.querySelector('.vt-schatten'); sch.style.top = 'auto'; sch.style.bottom = '0'; sch.style.background = 'linear-gradient(rgba(0,0,0,0),rgba(0,0,0,.38))'; }
-      return { t, text, lagen: lagen.map(l => r2(l.w)) };
+      document.body.appendChild(d);
+      const dr = d.getBoundingClientRect(), te = d.querySelector('.vt-text').getBoundingClientRect(), dk = dr.width / W;
+      const tr = { x0: (te.left - dr.left) / dk, x1: (te.right - dr.left) / dk, y0: (te.top - dr.top) / dk, y1: (te.bottom - dr.top) / dk };
+      // Dinge, die durch den Zoom nur noch halb im Bild sind oder hinter dem Text liegen, ausblenden (das Motiv bleibt)
+      for (const e of P.objekte) {
+        const el = document.getElementById(e.id);
+        if (!el || !(e.t0 + 0.3 <= t && t < e.t1)) continue;
+        const g = el.querySelector('svg,img,.zahl') || el, r = g.getBoundingClientRect();
+        if (r.width < 3 || r.height < 3) continue;
+        const x0 = (r.left - fr.left) / sk, x1 = (r.right - fr.left) / sk, y0 = (r.top - fr.top) / sk, y1 = (r.bottom - fr.top) / sk; // schon mit Zoom
+        const ganz = (x1 - x0) * (y1 - y0), drin = Math.max(0, Math.min(W, x1) - Math.max(0, x0)) * Math.max(0, Math.min(H, y1) - Math.max(0, y0));
+        const unterText = Math.max(0, Math.min(x1, tr.x1) - Math.max(x0, tr.x0)) * Math.max(0, Math.min(y1, tr.y1) - Math.max(y0, tr.y0));
+        if (e.id !== motiv.id && (drin < ganz * 0.6 || unterText > ganz * 0.12)) el.style.visibility = 'hidden';
+      }
+      return { t, text, zoom: r2(z), motiv: [r2(mx), r2(my)] };
     };
     window.__bfDauer = P.D;
     window.__bfLetzteZeit = () => letzteZeit;

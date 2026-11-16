@@ -8,7 +8,7 @@
   Z.vorschaubild = Z.thumbnail = function (w, t, h) {
     const text = w.text();
     const bei = w.optZahl(['bei', 'zeit', 'um']);
-    h.F.vorschaubild = { text: text ? String(text).slice(0, 60) : null, t: bei != null ? bei : t + 0.6 };
+    h.F.vorschaubild = { text: text ? String(text).slice(0, 60) : null, t: bei != null ? bei : t < 1 ? null : t + 0.6 }; // ganz am Anfang: Moment selbst suchen
     return 0;
   };
 })();
