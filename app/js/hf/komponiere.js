@@ -12,7 +12,7 @@
   const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 
   // Skripte, die die Komposition braucht (dieselbe Engine wie die App, nur ohne Oberfläche)
-  HF.SKRIPTE = ['vendor/three.min.js', 'vendor/gsap.min.js', 'js/texturen.js', 'js/skript.js', 'js/physik.js', 'js/ablauf.js', 'js/figuren.js', 'js/wissen.js', 'js/video.js', 'js/welt2d.js', 'js/urzeit.js', 'js/maskottchen.js', 'js/tiere.js', 'js/dinge.js', 'js/spannung.js', 'js/waswaere.js', 'js/autokorrektur.js', 'js/klartext.js', 'js/hf/stile.js', 'js/hf/twemoji-liste.js', 'js/hf/grafik.js', 'js/hf/figuren2d.js', 'js/hf/keime2d.js', 'js/hf/tiere2d.js', 'js/hf/rest2d.js', 'js/hf/dinge2d.js', 'js/hf/komponiere.js'];
+  HF.SKRIPTE = ['vendor/three.min.js', 'vendor/gsap.min.js', 'js/texturen.js', 'js/skript.js', 'js/physik.js', 'js/ablauf.js', 'js/figuren.js', 'js/wissen.js', 'js/video.js', 'js/welt2d.js', 'js/urzeit.js', 'js/maskottchen.js', 'js/tiere.js', 'js/dinge.js', 'js/vorschaubild.js', 'js/spannung.js', 'js/waswaere.js', 'js/autokorrektur.js', 'js/klartext.js', 'js/hf/stile.js', 'js/hf/twemoji-liste.js', 'js/hf/grafik.js', 'js/hf/figuren2d.js', 'js/hf/keime2d.js', 'js/hf/tiere2d.js', 'js/hf/rest2d.js', 'js/hf/dinge2d.js', 'js/hf/komponiere.js'];
 
   HF.passt = function (F) {
     if (!F || !F.w2d || !F.w2d.liste) return false;
@@ -454,6 +454,67 @@ ${HF.SKRIPTE.map(s => `<script src="${basis}${s}"></script>`).join('\n')}
     }
     window.addEventListener('hf-seek', ev => zeige(ev.detail ? ev.detail.time : 0));
     window.__bfZeige = t => { tl.seek(t, true); zeige(t); };
+    // Vorschaubild: einen guten Moment zeigen, Untertitel und Karten weg, großer Titel darüber
+    window.__bfVorschaubild = () => {
+      const V = F.vorschaubild || {};
+      const sichtbar = (a, t) => a.t0 <= t && t < a.t1;
+      let t = Number.isFinite(V.t) ? clamp(V.t, 0, P.D - 0.05) : null;
+      if (t === null) {
+        let best = -1e9;
+        // Wortstämme aus dem Titel: Momente, in denen davon gesprochen wird oder es zu sehen ist, passen am besten
+        const norm = x => String(x || '').toLowerCase().replace(/ä/g, 'a').replace(/ö/g, 'o').replace(/ü/g, 'u').replace(/ß/g, 'ss');
+        const NICHT = /^(warum|wieso|weshalb|passiert|passieren|wurde|wuerde|waere|wenn|deine|unser|unsere|eigentlich|funktioniert|gaebe|keinen|immer|einfach|kommt|werden|wieder|nicht|unter|durch|unser)/;
+        const SYN = { finge: ['hand', 'finge'], zehen: ['fuss', 'zehen'], erde: ['erde', 'planet'], mond: ['mond'], sonne: ['sonne'], herz: ['koerp', 'herz'], korpe: ['koerp'] };
+        const staemme = [...new Set(norm(F.titel).split(/[^a-z]+/).filter(x => x.length >= 4 && !NICHT.test(x)).map(x => x.slice(0, 5)))];
+        const passt = txt => { const n = norm(txt); return staemme.some(st => (SYN[st] || [st]).some(v => n.includes(v))); };
+        const objWorte = e => [e.o.name, e.o.typ, e.o.art, ...(F.w2d && F.w2d.texte || []).filter(x => x.an && x.an.obj === e.o.name).map(x => x.text)].join(' ');
+        const satzBei = x => (F.sprache || []).find(s => s.t0 <= x && x < s.t1);
+        const kand = (F.sprache || []).map(s => (s.t0 + s.t1) / 2).filter(x => x > P.D * 0.04 && x < P.D * 0.8);
+        if (!kand.length) kand.push(P.D * 0.3);
+        for (const x of kand) {
+          if (P.texte.some(e => (e.art === 'karte' || e.art === 'titel') && sichtbar(e, x)) || P.ueber.some(e => sichtbar(e, x))) continue;
+          if (F.blenden.some(b => b.t0 <= x && x < b.t1 + 0.5)) continue;
+          let n = 0;
+          for (const e of P.objekte) if (e.t0 + 0.8 <= x && x < e.t1 - 0.4) n += e.o.auto ? 0.5 : Math.min(2, 0.6 + e.o.r / 12) + (passt(objWorte(e)) ? 2.5 : 0);
+          const sz = satzBei(x);
+          const wert = n + (sz && passt(sz.text) ? 2 : 0) - Math.abs(x / P.D - 0.3) * 3;
+          if (wert > best) { best = wert; t = x; }
+        }
+        if (t === null) t = P.D * 0.3;
+      }
+      document.body.classList.add('vorschaubild');
+      window.__bfZeige(t);
+      const text = String(V.text || F.titel || '').trim();
+      const sch = stil.schrift, band = (stil.text && stil.text.band) || stil.palette.blau;
+      const lang = text.length, fs = W * (lang <= 14 ? 0.085 : lang <= 24 ? 0.068 : lang <= 40 ? 0.055 : 0.045);
+      const d = document.createElement('div');
+      d.id = 'vorschauTitel';
+      d.innerHTML = `<div class="vt-schatten"></div><div class="vt-band" style="background:${band}"><span style="font-family:${String(sch.titel).replace(/"/g, "'")};font-weight:${sch.titelGewicht};font-size:${r2(fs)}px">${esc(sch.versal ? text.toUpperCase() : text)}</span></div>`;
+      const css = document.createElement('style');
+      css.textContent = `body.vorschaubild .txt,body.vorschaubild .uebl{display:none!important}
+#vorschauTitel{position:absolute;inset:0;pointer-events:none;z-index:99999}
+#vorschauTitel .vt-schatten{position:absolute;left:0;right:0;top:0;height:55%;background:linear-gradient(rgba(0,0,0,.38),rgba(0,0,0,0))}
+#vorschauTitel .vt-band{position:absolute;left:${r2(W * 0.04)}px;top:${r2(H * 0.07)}px;max-width:${r2(W * 0.62)}px;padding:${r2(H * 0.018)}px ${r2(W * 0.024)}px ${r2(H * 0.026)}px;border-radius:${r2(H * 0.03)}px;transform:rotate(-2.5deg);box-shadow:0 ${r2(H * 0.014)}px 0 rgba(0,0,0,.3)}
+#vorschauTitel span{display:block;color:#fff;line-height:1.05;letter-spacing:.01em;text-shadow:0 ${r2(H * 0.006)}px 0 rgba(0,0,0,.25)}`;
+      document.head.appendChild(css);
+      const film = document.getElementById('film');
+      film.appendChild(d);
+      // Titel oben oder unten, je nachdem, wo er weniger verdeckt
+      const fr = film.getBoundingClientRect(), sk = fr.width / W;
+      const kisten = [...film.querySelectorAll('.clip.obj')].filter(el => getComputedStyle(el).display !== 'none' && getComputedStyle(el).visibility !== 'hidden' && +getComputedStyle(el).opacity > 0.05)
+        .map(el => el.querySelector('svg,img,.zahl') || el).map(el => el.getBoundingClientRect()).filter(r => r.width > 2 && r.height > 2)
+        .map(r => ({ x0: (r.left - fr.left) / sk, y0: (r.top - fr.top) / sk, x1: (r.right - fr.left) / sk, y1: (r.bottom - fr.top) / sk }));
+      const bandEl = d.querySelector('.vt-band'), bh = bandEl.offsetHeight, bw = bandEl.offsetWidth;
+      // Kästen etwas kleiner nehmen (die Grafiken füllen ihr Feld nicht ganz)
+      const klein = kisten.map(k => { const dx = (k.x1 - k.x0) * 0.08, dy = (k.y1 - k.y0) * 0.08; return { x0: k.x0 + dx, x1: k.x1 - dx, y0: k.y0 + dy, y1: k.y1 - dy }; });
+      const rand = H * 0.04, ueberdeckt = (x, y) => klein.reduce((s, k) => s + Math.max(0, Math.min(k.x1, x + bw + rand) - Math.max(k.x0, x - rand)) * Math.max(0, Math.min(k.y1, y + bh + rand) - Math.max(k.y0, y - rand)), 0);
+      const xl = W * 0.04, xr = W - bw - W * 0.04, yo = H * 0.07, yu = H - bh - H * 0.07;
+      const lagen = [[xl, yo, 1], [xr, yo, 1.15], [xl, yu, 1.3], [xr, yu, 1.4]].map(([x, y, f]) => ({ x, y, w: (ueberdeckt(x, y) + 1) * f }));
+      const lage = lagen.reduce((a, b) => (b.w < a.w ? b : a));
+      bandEl.style.left = r2(lage.x) + 'px'; bandEl.style.top = r2(lage.y) + 'px';
+      if (lage.y === yu) { const sch = d.querySelector('.vt-schatten'); sch.style.top = 'auto'; sch.style.bottom = '0'; sch.style.background = 'linear-gradient(rgba(0,0,0,0),rgba(0,0,0,.38))'; }
+      return { t, text, lagen: lagen.map(l => r2(l.w)) };
+    };
     window.__bfDauer = P.D;
     window.__bfLetzteZeit = () => letzteZeit;
     zeige(0);

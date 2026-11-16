@@ -39,6 +39,7 @@ Erklärfilm-Generator: Claude schreibt ein Skript in einer deutschen Befehlsspra
 - `app/js/spannung.js`: erkennt Was-wäre-wenn-Filme (`BF.filmIstWasWaere`: Titel, KI-Thema, erste Kapitelkarte; Achtung, `BF.istWasWaere` aus klartext.js ist etwas anderes), Stufe nach Zielgruppe (`kind`/`mittel`/`voll`). Karten mit `tx.spannung`, Geräusche `trommelwirbel`/`tusch`/`spannung` (ton.js), 2D-Kamerawackeln `F.w2d.wackeln` (welt2d.js `kamera()`).
 
 ## Film-Übersicht und Hintergrund-Exporte
+- Vorschaubild: Befehl `vorschaubild "Titel" [bei t]` (app/js/vorschaubild.js, setzt `F.vorschaubild`). `window.__bfVorschaubild()` (komponiere.js) wählt den Moment (sonst automatisch passend zum Titel), blendet Texte aus und legt den Titel dorthin, wo er am wenigsten verdeckt. `vorschaubildMachen()` (server.mjs) macht daraus `<video>.jpg` (1920×1080) nach jedem HF-Export (`bildHtml` bei `/api/hf/start`). Nur das Bild: `server.mjs --render skript.txt --nurbild -o bild.jpg`.
 - KI-Knopf: Ist ein KI-Film offen, bedeutet die Eingabe eine Änderung. Eine neue Frage („Warum …?“ ohne Änderungswörter, `istNeuesThema` in ui.js) startet trotzdem einen neuen Film, sonst würde der alte unter seinem Thema überschrieben.
 - Film-Leiste oben (`#flListe`): zuerst die fertigen Videos (aus `/api/exporte`, Klick spielt sie im `#spieler` ab, wird alle 30 s neu geladen), dann KI-Filme, dann Themen-Filme.
 - Jeder neue oder geänderte KI-Film wird nach dem Speichern automatisch in die Export-Warteschlange `/api/stapel` gestellt (Auflösung aus `#gal-aufl`).

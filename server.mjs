@@ -25,6 +25,7 @@ fs.mkdirSync(VIDEOS, { recursive: true });
 const args = process.argv.slice(2);
 const renderModus = args.includes('--render');
 const nurServer = args.includes('--server');
+const nurBild = args.includes('--nurbild'); // mit --render: nur das Vorschaubild machen (-o bild.jpg)
 let ausDatei = null, skriptDatei = null, extraAufl = null, renderStimme = null, renderTempo = null, renderAlter = null;
 for (let i = 0; i < args.length; i++) {
   const a = args[i];
@@ -317,6 +318,32 @@ async function regieBilder(html, momente) {
   }
 }
 
+// ---------- Vorschaubild (Thumbnail): ein Standbild der Komposition mit großem Titel, als JPEG neben dem Video ----------
+const bildZuVideo = v => String(v).replace(/(\.teil)?\.mp4$/i, '') + '.jpg';
+async function vorschaubildMachen(html, ziel) {
+  const id = crypto.randomBytes(6).toString('hex');
+  regieSeiten.set(id, html);
+  const { default: puppeteer } = await import('puppeteer-core');
+  const b = await puppeteer.launch({ executablePath: chromiumPfad(), args: ['--no-sandbox', '--hide-scrollbars'] });
+  try {
+    const seite = await b.newPage();
+    const m = /data-width="(\d+)" data-height="(\d+)"/.exec(html), w = m ? +m[1] : 1280, h = m ? +m[2] : 720;
+    await seite.setViewport({ width: w, height: h, deviceScaleFactor: 1920 / w });
+    await seite.goto(`http://127.0.0.1:${server.address().port}/hf-regie/${id}.html`, { waitUntil: 'load', timeout: 60000 });
+    await seite.waitForFunction(() => typeof window.__bfVorschaubild === 'function', { timeout: 30000 });
+    const info = await seite.evaluate(() => window.__bfVorschaubild());
+    await seite.evaluate(() => document.fonts.ready);
+    await new Promise(r => setTimeout(r, 300));
+    fs.mkdirSync(path.dirname(ziel), { recursive: true });
+    await seite.screenshot({ path: ziel, type: 'jpeg', quality: 88, clip: { x: 0, y: 0, width: w, height: h } });
+    if (process.env.BF_DEBUG) console.log(JSON.stringify(info));
+    return { ok: true, datei: ziel, ...info };
+  } finally {
+    regieSeiten.delete(id);
+    await b.close().catch(() => {});
+  }
+}
+
 // ---------- HyperFrames: Komposition in einen Projektordner schreiben und mit @hyperframes/producer rendern ----------
 let hfJob = null;
 const HF_ORDNER = path.join(CACHE, 'hf');
@@ -357,7 +384,8 @@ async function hfStarten(o) {
     const p = Number(j && j.progress);
     if (Number.isFinite(p)) J.anteil = Math.max(J.anteil, Math.min(1, p / 100));
     J.text = String(msg || '');
-  }, abbruch.signal).then(() => {
+  }, abbruch.signal).then(async () => {
+    if (o.bildHtml) { J.text = 'Vorschaubild …'; try { await vorschaubildMachen(String(o.bildHtml), bildZuVideo(ziel)); } catch (e) { console.error('Vorschaubild ging nicht:', e.message); } }
     J.ok = true; J.anteil = 1;
   }).catch(e => {
     J.ok = false; J.fehler = J.abgebrochen ? 'abgebrochen' : String(e && e.message || e);
@@ -398,7 +426,7 @@ async function anfrage(req, res) {
       let text = null;
       if (skriptDatei && fs.existsSync(skriptDatei)) text = fs.readFileSync(skriptDatei, 'utf8');
       let einst = {}; try { einst = JSON.parse(fs.readFileSync(path.join(HOME, 'Blockfilm', 'einstellungen.json'), 'utf8')); } catch {}
-      return json(res, { einstellungen: einst, datei: skriptDatei, text, render: renderModus, aus: ausDatei, aufl: extraAufl, renderStimme, renderTempo, renderAlter, skripte: SKRIPTE, videos: VIDEOS, material: MATERIAL });
+      return json(res, { einstellungen: einst, datei: skriptDatei, text, render: renderModus, nurBild, aus: ausDatei, aufl: extraAufl, renderStimme, renderTempo, renderAlter, skripte: SKRIPTE, videos: VIDEOS, material: MATERIAL });
     }
     if (p === '/api/aussprache' && req.method === 'GET') return json(res, { liste: eigeneLesen() });
     if (p === '/api/aussprache' && req.method === 'POST') {
@@ -430,6 +458,10 @@ async function anfrage(req, res) {
         try { erg.aussprache = await kiAussprache(erg.skript, { aussprechen, lautschrift, eigeneLesen, eigeneSchreiben }); } catch (e) { erg.aussprache = { ok: false, fehler: String(e.message || e) }; }
       }
       return json(res, erg);
+    }
+    if (p === '/api/vorschaubild' && req.method === 'POST') {
+      const o = JSON.parse((await koerper(req)).toString('utf8'));
+      try { return json(res, await vorschaubildMachen(String(o.html || ''), path.resolve(String(o.aus)))); } catch (e) { return json(res, { ok: false, fehler: String(e.message || e) }); }
     }
     if (p.startsWith('/hf-regie/')) {
       // Komposition für die Regie-Prüfung (nur kurz im Speicher)
@@ -713,7 +745,8 @@ async function exporteLesen() {
       for (const f of fs.readdirSync(ordner)) {
         if (!f.endsWith('.mp4') || f.endsWith('.teil.mp4')) continue;
         const st = fs.statSync(path.join(ordner, f));
-        fertig.push({ datei: path.join(ordner, f), name: filmName(f), groesse: st.size, zeit: st.mtimeMs, kaputt: !videoHeil(path.join(ordner, f), st) });
+        const bild = bildZuVideo(path.join(ordner, f));
+        fertig.push({ datei: path.join(ordner, f), name: filmName(f), groesse: st.size, zeit: st.mtimeMs, kaputt: !videoHeil(path.join(ordner, f), st), bild: fs.existsSync(bild) ? bild : null });
       }
     } catch {}
   }

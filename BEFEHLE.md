@@ -97,6 +97,11 @@ zielgruppe 3-5
 
 Legt den Bildstil fest (`0-2`, `3-5`, `6-9`, `10+`): Farben, Schrift und wie lebhaft Dinge erscheinen und sich bewegen. Ohne diesen Befehl gilt die Auswahl in der App. Filme nur mit der 2D-Welt werden im neuen Flat-Look (wie bei Erklärvideos auf YouTube) mit HyperFrames gebaut; Filme mit der 3D-Blockwelt sehen aus wie bisher.
 
+```
+vorschaubild "Schrumpelfinger?!"
+```
+Das Vorschaubild (Thumbnail) für das Video: ein Standbild von diesem Moment, ohne Untertitel, mit dem Titel groß darüber (`bei 42` gibt den Moment in Sekunden an). Es wird beim Export als JPEG neben das Video gelegt (`film.mp4` → `film.jpg`) und in der Film-Leiste und in „Alle Filme“ gezeigt. Ohne den Befehl sucht Blockfilm selbst einen Moment, der zum Titel passt, und nimmt den Filmtitel. Der Titel weicht den Bildern aus (oben/unten, links/rechts).
+
 ## Musik und Töne
 
 `musik froehlich` (auch: ruhig, spannend, episch, traurig, gruselig, aus) – wird beim Sprechen leiser.

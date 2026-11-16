@@ -309,7 +309,7 @@
       const F = BF.kompiliere(skript);
       if (!BF.hf.passt(F)) return null; // Filme mit 3D-Blockwelt werden (noch) nicht geprüft
       const befunde = BF.hf.regieBefunde(F, skript), momente = BF.hf.regieMomente(F, 10);
-      const html = BF.hf.komponiere(F, { skript, sprachDauer: sprach, alter: info.alter, breite: 1280, hoehe: 720, vorschau: true, ton: null, basis: '/' });
+      const html = BF.hf.komponiere(F, { skript, sprachDauer: sprach, alter: info.alter, breite: 1280, hoehe: Math.round(1280 * (F.hoehe || 1080) / (F.breite || 1920)), vorschau: true, ton: null, basis: '/' });
       return await post('/api/ki/regie', Object.assign({}, info, { skript, html, momente, befunde }));
     } finally { BF.hf.standardAlter = altAlter; }
   }
@@ -990,7 +990,7 @@
     const aktTitel = S.ki ? S.ki.thema : (kt.value || '').trim();
     const fertig = Object.entries(BF.THEMEN || {}).map(([k, th]) => `<button data-thema="${k}" title="${esc(th.name)}" class="${!S.ki && aktTitel === th.name ? 'aktiv' : ''}">${FILM_ICON[k] || '🎬'} ${esc(KURZNAME[k] || th.name)}</button>`).join('');
     const ki = filmListeKI.map(f => `<button class="ki${S.datei === f.pfad ? ' aktiv' : ''}" data-pfad="${esc(f.pfad)}" title="KI-Film: ${esc(f.thema)}${f.alter ? ' (' + esc(f.alter) + ' Jahre)' : ''} – gespeichert ${new Date(f.zeit).toLocaleString('de-DE')}">🤖 ${esc(f.thema.length > 38 ? f.thema.slice(0, 36) + '…' : f.thema)}<span class="fl-weg" data-weg="${esc(f.pfad)}" title="Diesen KI-Film löschen">✕</span></button>`).join('');
-    const videos = filmListeVideos.map(v => `<button class="video" data-video="${esc(v.datei)}" data-name="${esc(v.name)}" title="Fertiges Video: ${esc(v.name)} – ${new Date(v.zeit).toLocaleString('de-DE')} (${(v.groesse / 1048576).toFixed(0)} MB). Klick spielt es ab.">▶ ${esc(v.name.length > 38 ? v.name.slice(0, 36) + '…' : v.name)}</button>`).join('');
+    const videos = filmListeVideos.map(v => `<button class="video" data-video="${esc(v.datei)}" data-name="${esc(v.name)}" title="Fertiges Video: ${esc(v.name)} – ${new Date(v.zeit).toLocaleString('de-DE')} (${(v.groesse / 1048576).toFixed(0)} MB). Klick spielt es ab.">${v.bild ? `<img class="fl-bild" src="/api/roh?p=${encodeURIComponent(v.bild)}&z=${Math.round(v.zeit)}" alt="">` : ''}▶ ${esc(v.name.length > 38 ? v.name.slice(0, 36) + '…' : v.name)}</button>`).join('');
     $('flListe').innerHTML = (videos ? videos + '<span class="fl-trenner"></span>' : '') + (ki ? ki + '<span class="fl-trenner"></span>' : '') + fertig;
   }
   $('flListe').addEventListener('click', async e => {
@@ -1045,7 +1045,7 @@
     };
     const karte = (titel, info, knoepfe, z) => `<div class="gal-film${z.includes('⏳') ? ' laeuft' : ''}"><div class="gal-name">${titel}</div><div class="gal-info">${info}</div>${z}<div class="gal-knoepfe">${knoepfe}</div></div>`;
     const leer = t => `<div class="gal-leer">${t}</div>`;
-    $('galVideos').innerHTML = galDaten.videos.length ? galDaten.videos.map(v => karte(esc(v.name), `${zeitText(v.zeit)} Uhr · ${(v.groesse / 1048576).toFixed(0)} MB`,
+    $('galVideos').innerHTML = galDaten.videos.length ? galDaten.videos.map(v => karte((v.bild ? `<img class="gal-bild" src="/api/roh?p=${encodeURIComponent(v.bild)}&z=${Math.round(v.zeit)}" alt="" data-video="${esc(v.datei)}" data-name="${esc(v.name)}">` : '') + esc(v.name), `${zeitText(v.zeit)} Uhr · ${(v.groesse / 1048576).toFixed(0)} MB`,
       v.kaputt ? '<span class="gal-info">⚠ unvollständig</span>' : `<button data-video="${esc(v.datei)}" data-name="${esc(v.name)}">▶ Abspielen</button><button data-ordner="${esc(v.datei)}" title="Im Ordner zeigen">📂</button>`, '')).join('') : leer('Noch keine fertigen Videos.');
     $('galKI').innerHTML = galDaten.ki.length ? galDaten.ki.map(f => karte('🤖 ' + esc(f.thema), `${f.alter ? esc(f.alter) + ' Jahre · ' : ''}${zeitText(f.zeit)} Uhr`,
       `<button data-ansehen="${esc(f.pfad)}">▶ Ansehen</button><button data-export="${esc(f.pfad)}" data-name="${esc(f.thema)}">💾 Exportieren</button>`, zustand(f.pfad, f.thema))).join('') : leer('Noch keine KI-Filme. Schreib oben ein Thema und drück „🤖 KI-Film“.');
@@ -1077,7 +1077,7 @@
   $('gal-aufl').addEventListener('change', () => { try { localStorage.setItem('bf_galAufl', $('gal-aufl').value); } catch {} });
   try { const v = localStorage.getItem('bf_galAufl'); if (v) $('gal-aufl').value = v; } catch {}
   $('galerie').addEventListener('click', async e => {
-    const b = e.target.closest('button'); if (!b) return;
+    const b = e.target.closest('button, img[data-video]'); if (!b) return;
     const d = b.dataset, alter = $('kiAlter').value;
     if (d.video) videoAbspielen(d.video, d.name);
     else if (d.ordner) post('/api/oeffnen', { pfad: d.ordner.replace(/\/[^/]*$/, '') });
@@ -1222,11 +1222,19 @@
     return erg;
   }
 
+  // Vorschaubild (Thumbnail): dieselbe Komposition als Vorschau, der Server macht daraus ein Standbild mit Titel
+  const vorschauHtml = F => BF.hf.komponiere(F, { skript: S.quelle, sprachDauer: S.sprachStand, alter: BF.hf.standardAlter, breite: 1280, hoehe: Math.round(1280 * (F.hoehe || 1080) / (F.breite || 1920)), vorschau: true, ton: null, basis: '/' });
+  async function nurVorschaubild(aus) {
+    if (S.vorb) { let v; do { v = S.vorb; await v; } while (v !== S.vorb); }
+    if (!(BF.hf && BF.hf.passt(S.F))) return { ok: false, fehler: 'Film nutzt die 3D-Welt, dafür gibt es kein Vorschaubild aus der Komposition' };
+    return post('/api/vorschaubild', { html: vorschauHtml(S.F), aus });
+  }
+
   // Export über HyperFrames: Komposition bauen, Server rendert mit @hyperframes/producer
   async function exportierenHF(o, F, w, h, fps, mitTon, zeige) {
     zeige(0, 'Baue Komposition (neuer Bildstil) …');
     const html = BF.hf.komponiere(F, { skript: S.quelle, sprachDauer: S.sprachStand, alter: BF.hf.standardAlter, breite: w, hoehe: h, ton: mitTon ? 'ton.wav' : null });
-    const start = await post('/api/hf/start', { html, fps, name: F.titel, ton: mitTon, aus: o.aus || null });
+    const start = await post('/api/hf/start', { html, bildHtml: vorschauHtml(F), fps, name: F.titel, ton: mitTon, aus: o.aus || null });
     if (!start.ok) { S.export = false; groesseAnpassen(); throw new Error(start.fehler); }
     let st;
     for (;;) {
@@ -1313,7 +1321,7 @@ alex sagt "Wow!!"
       // Kommandozeilen-Modus: Video ohne Fenster bauen
       const ueber = { '4k': [3840, 2160], '1080p': [1920, 1080], '720p': [1280, 720] }[info.aufl] || [null, null];
       try {
-        const erg = await exportieren({ breite: ueber[0], hoehe: ueber[1], ton: true, aus: info.aus }, true);
+        const erg = info.nurBild ? await nurVorschaubild(info.aus) : await exportieren({ breite: ueber[0], hoehe: ueber[1], ton: true, aus: info.aus }, true);
         await post('/api/fertig', { ok: erg.ok, datei: erg.datei, fehler: erg.fehler, fehlerListe: S.F.fehler });
       } catch (e) {
         await post('/api/fertig', { ok: false, fehler: e.message, fehlerListe: S.F ? S.F.fehler : [] });
