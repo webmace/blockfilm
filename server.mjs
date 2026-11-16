@@ -426,13 +426,27 @@ const TIMER_DIR = path.join(HOME, '.config', 'systemd', 'user');
 async function tagesTimerAn() { return (await ausfuehren('systemctl', ['--user', 'is-enabled', 'blockfilm-tagesvideo.timer'])).trim() === 'enabled'; }
 async function tagesTimerSetzen(t) {
   fs.mkdirSync(TIMER_DIR, { recursive: true });
-  fs.writeFileSync(path.join(TIMER_DIR, 'blockfilm-tagesvideo.service'), `[Unit]\nDescription=Blockfilm: Tagesvideo schreiben, speichern und auf YouTube hochladen\n\n[Service]\nType=simple\nExecStart=${path.join(HIER, 'bin', 'tagesvideo')}\n`);
+  fs.writeFileSync(path.join(TIMER_DIR, 'blockfilm-tagesvideo.service'), `[Unit]\nDescription=Blockfilm: Tagesvideo schreiben und zum Hochladen fertig machen\n\n[Service]\nType=simple\nExecStart=${path.join(HIER, 'bin', 'tagesvideo')}\n`);
   const [h, m] = t.uhrzeit.split(':');
   fs.writeFileSync(path.join(TIMER_DIR, 'blockfilm-tagesvideo.timer'), `[Unit]\nDescription=Blockfilm: jeden Tag ein Video\n\n[Timer]\nOnCalendar=*-*-* ${h.padStart(2, '0')}:${m}:00\nPersistent=true\n\n[Install]\nWantedBy=timers.target\n`);
   await ausfuehren('systemctl', ['--user', 'daemon-reload']);
   await ausfuehren('systemctl', ['--user', t.an ? 'enable' : 'disable', '--now', 'blockfilm-tagesvideo.timer']);
 }
-// nach dem Export: Text für YouTube schreiben, hochladen (privat), merken
+// nach dem Export: Text für YouTube schreiben (YouTube.txt im Ordner des Videos), merken; hochladen nur, wenn verbunden
+function youtubeTextDatei(ordner, text, video, bild) {
+  const inhalt = [
+    'TITEL', text.titel, '',
+    'BESCHREIBUNG', text.beschreibung, '',
+    'SCHLAGWÖRTER (Tags)', (text.tags || []).join(', '), '',
+    'DATEIEN', 'Video: ' + path.basename(video), 'Vorschaubild: ' + (fs.existsSync(bild) ? path.basename(bild) : '–'), '',
+    'EINSTELLUNGEN BEIM HOCHLADEN',
+    'Zielgruppe: Ja, es ist speziell für Kinder', 'Kategorie: Bildung', 'Sprache: Deutsch',
+    'Veränderte oder synthetische Inhalte: Ja (KI-Stimme und KI-Text)', '',
+  ].join('\n');
+  const datei = path.join(ordner, 'YouTube.txt');
+  fs.writeFileSync(datei, inhalt);
+  return datei;
+}
 async function tagesAbschliessen(o) {
   const eintrag = { datum: new Date().toISOString(), thema: o.thema || (tagesAuftrag && tagesAuftrag.thema), alter: o.alter, skript: o.skript || null, video: o.video || null };
   const merken = () => { const l = tagesListe(); l.push(eintrag); fs.writeFileSync(TAGES_LISTE, JSON.stringify(l, null, 2)); };
@@ -442,11 +456,14 @@ async function tagesAbschliessen(o) {
     let quellen = [];
     try { const z = skript.split('\n').find(x => x.startsWith('#KI ')); if (z) quellen = JSON.parse(z.slice(4)).quellen || []; } catch {}
     const text = await kiYoutubeText({ thema: eintrag.thema, alter: eintrag.alter, skript, quellen });
-    Object.assign(eintrag, { titel: text.titel });
-    if (!ytStatus().verbunden) { eintrag.fehler = 'nicht mit YouTube verbunden'; merken(); benachrichtigen(`Tagesvideo fertig („${text.titel}“), aber Blockfilm ist nicht mit YouTube verbunden.`); return 0; }
+    const ordner = path.dirname(o.video), bild = bildZuVideo(o.video);
+    youtubeTextDatei(ordner, text, o.video, bild);
+    if (skript) try { fs.writeFileSync(path.join(ordner, 'Skript.txt'), skript); } catch {}
+    Object.assign(eintrag, { titel: text.titel, ordner });
+    console.log('Bereit zum Hochladen: ' + ordner);
+    if (!ytStatus().verbunden) { merken(); benachrichtigen(`Neues Tagesvideo fertig: „${text.titel}“. Video, Vorschaubild und Text liegen in ${ordner}`); return 0; }
     console.log('Lade hoch: ' + text.titel);
     let zuletzt = 0;
-    const bild = o.video.replace(/\.mp4$/i, '.jpg');
     const erg = await ytHochladen({ datei: o.video, titel: text.titel, beschreibung: text.beschreibung, tags: text.tags, bild, fortschritt: a => { if (a - zuletzt > 0.1) { zuletzt = a; process.stdout.write(`\rHochladen ${Math.round(a * 100)} %   `); } } });
     Object.assign(eintrag, { youtube: erg.id, url: erg.url, bild: erg.bild });
     merken();
@@ -702,7 +719,10 @@ async function anfrage(req, res) {
       return json(res, { ok: true });
     }
     // ---------- YouTube und Tagesvideo ----------
-    if (p === '/api/youtube/status') return json(res, Object.assign(ytStatus(), { tagesvideo: tagesEinstellungen(), timer: await tagesTimerAn(), letzte: tagesListe().slice(-5).reverse() }));
+    if (p === '/api/youtube/status') {
+      fs.mkdirSync(path.join(VIDEOS, 'Tagesvideos'), { recursive: true });
+      return json(res, Object.assign(ytStatus(), { ordner: path.join(VIDEOS, 'Tagesvideos'), tagesvideo: tagesEinstellungen(), timer: await tagesTimerAn(), letzte: tagesListe().slice(-5).reverse() }));
+    }
     if (p === '/api/youtube/client' && req.method === 'POST') {
       const o = JSON.parse((await koerper(req)).toString('utf8'));
       try { ytClientSetzen(String(o.text || '')); return json(res, { ok: true }); } catch (e) { return json(res, { ok: false, fehler: e.message }); }
@@ -740,7 +760,8 @@ async function anfrage(req, res) {
       try { if (!thema) thema = await kiTagesThema({ alter: t.alter, bisher: bisher.concat(alleKiThemen()) }); }
       catch (e) { return json(res, { ok: false, fehler: e.message }); }
       const stempel = new Date().toISOString().slice(0, 10);
-      tagesAuftrag = { thema, alter: t.alter, aus: path.join(VIDEOS, 'Tagesvideos', `${stempel} ${thema.replace(/[^\wäöüÄÖÜß\- ]+/g, '').trim().slice(0, 70)}.mp4`) };
+      const name = thema.replace(/[^\wäöüÄÖÜß\- ]+/g, '').trim().slice(0, 70);
+      tagesAuftrag = { thema, alter: t.alter, aus: path.join(VIDEOS, 'Tagesvideos', `${stempel} ${name}`, `${name}.mp4`) };
       fs.mkdirSync(path.dirname(tagesAuftrag.aus), { recursive: true });
       console.log('Thema: ' + thema);
       return json(res, Object.assign({ ok: true }, tagesAuftrag));
@@ -838,7 +859,10 @@ async function exporteLesen() {
   } catch {}
   // 4. fertige Videos
   const fertig = [];
-  for (const ordner of [VIDEOS, ausOrdner, path.join(VIDEOS, 'KI'), path.join(VIDEOS, 'Tagesvideos')]) {
+  const tagesOrdner = path.join(VIDEOS, 'Tagesvideos');
+  let tagesUnter = [];
+  try { tagesUnter = fs.readdirSync(tagesOrdner, { withFileTypes: true }).filter(d => d.isDirectory()).map(d => path.join(tagesOrdner, d.name)); } catch {}
+  for (const ordner of [VIDEOS, ausOrdner, path.join(VIDEOS, 'KI'), tagesOrdner, ...tagesUnter]) {
     try {
       for (const f of fs.readdirSync(ordner)) {
         if (!f.endsWith('.mp4') || f.endsWith('.teil.mp4')) continue;

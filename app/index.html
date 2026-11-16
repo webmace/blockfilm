@@ -18,7 +18,7 @@
   <span id="info" class="info"></span>
   <button id="b-hilfe" title="Alle Befehle (F1)">Befehle</button>
   <button id="b-galerie" title="Alle Filme auf einen Blick: ansehen, fertige Videos abspielen und exportieren">🎬 Alle Filme</button>
-  <button id="ytEinst" title="YouTube und Tagesvideo: jeden Tag einen KI-Film machen und auf YouTube hochladen">📺 YouTube</button>
+  <button id="ytEinst" title="Tagesvideo: jeden Tag einen KI-Film mit Vorschaubild und YouTube-Text fertig machen">📺 Tagesvideo</button>
   <button id="b-exporte" title="Alle Exporte ansehen: was gerade gespeichert wird, der Nacht-Export und fertige Videos">📋 Exporte <span id="exporteZahl" class="abzeichen" hidden></span></button>
   <button id="b-video" class="haupt" title="Den Film, der rechts in der Vorschau läuft, als MP4-Datei speichern (in Videos/Blockfilm)">💾 Als Video speichern</button>
 </header>
@@ -160,28 +160,30 @@
 
 <div class="schicht" id="ytDialog" hidden>
   <div class="karte" style="max-width:640px">
-    <div class="kopf"><h2>📺 YouTube und Tagesvideo</h2><button class="zu" data-zu="ytDialog">✕</button></div>
-    <p class="klein">Jeden Tag sucht die KI ein neues Thema, schreibt den Film, speichert ihn in 4K und lädt ihn <b>privat</b> auf deinen Kanal hoch, mit Titel, Beschreibung, Schlagwörtern und Vorschaubild. Du schaust ihn an und stellst ihn in YouTube Studio auf „Öffentlich“.</p>
-    <h3 class="ex-titel">1. Zugang einrichten (einmalig)</h3>
-    <ol class="klein">
-      <li>Öffne die <a id="ytCloud" href="#">Google Cloud Console</a>, melde dich mit dem Google-Konto deines Kanals an und lege ein neues Projekt an (z. B. „Blockfilm“).</li>
-      <li>Unter <b>APIs &amp; Dienste → Bibliothek</b> die <b>YouTube Data API v3</b> suchen und <b>aktivieren</b>.</li>
-      <li>Unter <b>Google Auth Platform</b> (OAuth-Zustimmungsbildschirm): App-Name „Blockfilm“, deine E-Mail, Zielgruppe <b>Extern</b>. Danach bei <b>Zielgruppe</b> auf <b>„App veröffentlichen“</b> (In Produktion) klicken, sonst läuft die Anmeldung nach 7 Tagen ab.</li>
-      <li>Unter <b>Clients</b> einen neuen OAuth-Client erstellen, Typ <b>Desktop-App</b>, und die <b>JSON-Datei herunterladen</b>.</li>
-      <li>Den Inhalt der Datei hier einfügen und speichern:</li>
-    </ol>
-    <div class="zeile"><textarea id="ytClient" rows="3" placeholder='{"installed":{"client_id":"….apps.googleusercontent.com", …}}' style="flex:1;background:#14161a;border:1px solid var(--rand);color:var(--text);border-radius:6px;padding:8px 10px;font:12px monospace"></textarea></div>
-    <div class="zeile"><button id="ytClientSpeichern">Speichern</button><button class="haupt" id="ytVerbinden">Mit YouTube verbinden</button><button id="ytTrennen">Trennen</button></div>
-    <p class="klein">Beim Verbinden warnt Google „Diese App wurde nicht überprüft“: auf <b>Erweitert → Zu Blockfilm wechseln</b> klicken, das ist deine eigene App. Die Zugangsdaten bleiben nur auf diesem Computer.</p>
-    <p id="ytStatus" class="klein"></p>
-    <h3 class="ex-titel">2. Tagesvideo</h3>
+    <div class="kopf"><h2>📺 Tagesvideo für YouTube</h2><button class="zu" data-zu="ytDialog">✕</button></div>
+    <p class="klein">Jeden Tag sucht die KI ein neues Thema und macht alles fertig zum Hochladen: <b>Video</b> (4K), <b>Vorschaubild</b> und eine Datei <b>YouTube.txt</b> mit Titel, Beschreibung und Schlagwörtern. Jeder Tag bekommt einen eigenen Ordner. Du lädst das Video in YouTube Studio hoch und kopierst den Text hinein.</p>
     <div class="zeile"><label class="schalter"><input type="checkbox" id="tvAn"> Jeden Tag ein Video machen</label>
       <label class="schalter">um <input type="time" id="tvZeit" value="02:00"></label>
       <label class="schalter">für <select id="tvAlter"><option value="0-2">0–2 Jahre</option><option value="3-5" selected>3–5 Jahre</option><option value="6-9">6–9 Jahre</option><option value="10+">ab 10</option></select></label></div>
-    <p class="klein">Der Computer muss dafür an sein (ein Film braucht etwa 1–2 Stunden). Eigene Themen: eine pro Zeile in <code>~/Blockfilm/tagesthemen.txt</code>, sonst sucht die KI selbst eins.</p>
-    <div class="zeile"><button class="haupt" id="tvSpeichern">Speichern</button><button id="tvJetzt">Jetzt ein Tagesvideo machen</button></div>
+    <p class="klein">Der Computer muss dafür an sein (ein Film braucht etwa 1–2 Stunden). Eigene Themen: eins pro Zeile in <code>~/Blockfilm/tagesthemen.txt</code>, sonst sucht die KI selbst eins.</p>
+    <div class="zeile"><button class="haupt" id="tvSpeichern">Speichern</button><button id="tvJetzt">Jetzt ein Tagesvideo machen</button><button id="tvOrdner">📁 Ordner öffnen</button></div>
     <p id="tvMeldung" class="klein"></p>
     <div id="tvListe" class="klein"></div>
+    <details style="margin-top:14px">
+      <summary class="klein" style="cursor:pointer">Für Fortgeschrittene: automatisch auf YouTube hochladen</summary>
+      <p class="klein">Nicht nötig. Wer will, kann Blockfilm erlauben, das Video selbst <b>privat</b> hochzuladen. Dafür braucht es einmalig einen Zugang aus der Google Cloud:</p>
+      <ol class="klein">
+        <li>Öffne die <a id="ytCloud" href="#">Google Cloud Console</a>, melde dich mit dem Google-Konto deines Kanals an und lege ein neues Projekt an (z. B. „Blockfilm“).</li>
+        <li>Unter <b>APIs &amp; Dienste → Bibliothek</b> die <b>YouTube Data API v3</b> suchen und <b>aktivieren</b>.</li>
+        <li>Unter <b>Google Auth Platform</b>: App-Name „Blockfilm“, deine E-Mail, Zielgruppe <b>Extern</b>. Danach bei <b>Zielgruppe</b> auf <b>„App veröffentlichen“</b> klicken, sonst läuft die Anmeldung nach 7 Tagen ab.</li>
+        <li>Unter <b>Clients</b> einen OAuth-Client vom Typ <b>Desktop-App</b> erstellen und die <b>JSON-Datei herunterladen</b>.</li>
+        <li>Den Inhalt der Datei hier einfügen und speichern:</li>
+      </ol>
+      <div class="zeile"><textarea id="ytClient" rows="3" placeholder='{"installed":{"client_id":"….apps.googleusercontent.com", …}}' style="flex:1;background:#14161a;border:1px solid var(--rand);color:var(--text);border-radius:6px;padding:8px 10px;font:12px monospace"></textarea></div>
+      <div class="zeile"><button id="ytClientSpeichern">Speichern</button><button class="haupt" id="ytVerbinden">Mit YouTube verbinden</button><button id="ytTrennen">Trennen</button></div>
+      <p class="klein">Beim Verbinden warnt Google „Diese App wurde nicht überprüft“: auf <b>Erweitert → Zu Blockfilm wechseln</b> klicken, das ist deine eigene App. Die Zugangsdaten bleiben nur auf diesem Computer.</p>
+      <p id="ytStatus" class="klein"></p>
+    </details>
   </div>
 </div>
 

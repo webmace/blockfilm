@@ -51,9 +51,10 @@ Erklärfilm-Generator: Claude schreibt ein Skript in einer deutschen Befehlsspra
 - Exporte von dort gehen in die Warteschlange `/api/stapel` (server.mjs). Sie laufen nacheinander als eigene Prozesse `server.mjs --render … --stimme … --sprechtempo … --alter …`. Themen-Filme werden vorher als Skript nach `~/.cache/blockfilm/stapel/` geschrieben.
 
 ## YouTube und Tagesvideo
-- `youtube.mjs`: OAuth für Desktop-Apps (Rückruf `http://127.0.0.1:<port>/api/youtube/rueckruf`), Zugang in `einstellungen.json` → `youtube`. `ytHochladen()` lädt fortsetzbar hoch (immer `private`, `selfDeclaredMadeForKids`, Kategorie 27) und setzt das Vorschaubild (geht erst bei bestätigtem Kanal).
-- `server.mjs --tagesvideo [--720p]`: wie `--render`, aber die App (`?tagesvideo=1`, ui.js) holt `/api/tagesvideo/auftrag` (Thema aus `~/Blockfilm/tagesthemen.txt` oder `kiTagesThema`), läuft `kiFilm()` durch, exportiert nach `~/Videos/Blockfilm/Tagesvideos/` und meldet `/api/tagesvideo/fertig`; dann schreibt `kiYoutubeText` Titel/Beschreibung/Tags und es wird hochgeladen. Liste: `~/Blockfilm/tagesvideos.json`.
-- Zeitplan: `bin/tagesvideo` (wartet auf andere Exporte) über `~/.config/systemd/user/blockfilm-tagesvideo.timer`, eingestellt im Dialog 📺.
+- Tagesvideo (Dialog 📺 Tagesvideo): jeden Tag ein Ordner `~/Videos/Blockfilm/Tagesvideos/<Datum> <Thema>/` mit `<Thema>.mp4`, `<Thema>.jpg` (Vorschaubild), `YouTube.txt` (Titel, Beschreibung, Tags, Einstellungen; `youtubeTextDatei` in server.mjs) und `Skript.txt`. Hochgeladen wird von Hand; die Film-Leiste liest auch die Unterordner.
+- `server.mjs --tagesvideo [--720p]`: wie `--render`, aber die App (`?tagesvideo=1`, ui.js) holt `/api/tagesvideo/auftrag` (Thema aus `~/Blockfilm/tagesthemen.txt` oder `kiTagesThema`), läuft `kiFilm()` durch, exportiert und meldet `/api/tagesvideo/fertig`; dann schreibt `kiYoutubeText` den Text (`tagesAbschliessen`). Liste: `~/Blockfilm/tagesvideos.json`.
+- Optional (ausklappbar im Dialog): `youtube.mjs` mit OAuth für Desktop-Apps (Rückruf `http://127.0.0.1:<port>/api/youtube/rueckruf`), Zugang in `einstellungen.json` → `youtube`. Ist er verbunden, lädt `ytHochladen()` zusätzlich hoch (immer `private`, `selfDeclaredMadeForKids`, Kategorie 27) und setzt das Vorschaubild (geht erst bei bestätigtem Kanal).
+- Zeitplan: `bin/tagesvideo` (wartet auf andere Exporte) über `~/.config/systemd/user/blockfilm-tagesvideo.timer`.
 
 ## KI-Regie-Prüfung
 Nach dem Schreiben eines KI-Films (Schalter „🎬 Regie“, nur für Filme mit der 2D-Welt):

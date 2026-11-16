@@ -189,10 +189,12 @@
     $('ytStatus').innerHTML = st.verbunden ? `✅ Verbunden${st.kanal ? ` mit dem Kanal <b>${esc(st.kanal.name)}</b>` : ''}.` : st.client ? '🔑 Zugang gespeichert. Jetzt „Mit YouTube verbinden“ klicken.' : '⬜ Noch nicht eingerichtet.';
     $('ytTrennen').hidden = !st.verbunden;
     $('tvAn').checked = !!st.tagesvideo.an; $('tvZeit').value = st.tagesvideo.uhrzeit; $('tvAlter').value = st.tagesvideo.alter;
-    $('tvListe').innerHTML = st.letzte.length ? '<b>Letzte Tagesvideos:</b><br>' + st.letzte.map(v => `${new Date(v.datum).toLocaleDateString('de-DE')}: ${esc(v.titel || v.thema || '')} ${v.url ? `<a data-url="${esc(v.url)}">▶ auf YouTube</a>` : ''}${v.fehler ? ` <span style="color:#f88">⚠ ${esc(v.fehler)}</span>` : ''}`).join('<br>') : '';
+    S.tagesOrdner = st.ordner;
+    $('tvListe').innerHTML = st.letzte.length ? '<b>Letzte Tagesvideos:</b><br>' + st.letzte.map(v => `${new Date(v.datum).toLocaleDateString('de-DE')}: ${esc(v.titel || v.thema || '')} ${v.ordner ? `<a data-url="${esc(v.ordner)}">📁 Ordner</a>` : ''} ${v.url ? `<a data-url="${esc(v.url)}">▶ auf YouTube</a>` : ''}${v.fehler ? ` <span style="color:#f88">⚠ ${esc(v.fehler)}</span>` : ''}`).join('<br>') : '';
   }
   $('ytEinst').onclick = () => { $('ytDialog').hidden = false; ytZeigen(); };
   $('ytCloud').onclick = e => { e.preventDefault(); post('/api/oeffnen', { pfad: 'https://console.cloud.google.com/projectcreate' }); };
+  $('tvOrdner').onclick = () => { if (S.tagesOrdner) post('/api/oeffnen', { pfad: S.tagesOrdner }); };
   $('tvListe').addEventListener('click', e => { const a = e.target.closest('a[data-url]'); if (a) post('/api/oeffnen', { pfad: a.dataset.url }); });
   $('ytClientSpeichern').onclick = async () => {
     const j = await post('/api/youtube/client', { text: $('ytClient').value });
@@ -210,7 +212,7 @@
   };
   $('tvJetzt').onclick = async () => {
     await post('/api/tagesvideo/jetzt', {});
-    $('tvMeldung').textContent = '▶ Das Tagesvideo wird jetzt gemacht (wartet, falls gerade ein anderer Export läuft). Fortschritt unter „📋 Exporte“; am Ende kommt eine Benachrichtigung.';
+    $('tvMeldung').textContent = '▶ Das Tagesvideo wird jetzt gemacht (wartet, falls gerade ein anderer Export läuft). Fortschritt unter „📋 Exporte“; am Ende kommt eine Benachrichtigung und alles liegt im Ordner.';
   };
   $('kiSeite').onclick = () => post('/api/oeffnen', { pfad: 'https://console.anthropic.com/settings/keys' });
   $('kiSpeichern').onclick = async () => {
