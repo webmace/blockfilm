@@ -40,6 +40,7 @@ Erklärfilm-Generator: Claude schreibt ein Skript in einer deutschen Befehlsspra
 
 ## Film-Übersicht und Hintergrund-Exporte
 - KI-Knopf: Ist ein KI-Film offen, bedeutet die Eingabe eine Änderung. Eine neue Frage („Warum …?“ ohne Änderungswörter, `istNeuesThema` in ui.js) startet trotzdem einen neuen Film, sonst würde der alte unter seinem Thema überschrieben.
+- Film-Leiste oben (`#flListe`): zuerst die fertigen Videos (aus `/api/exporte`, Klick spielt sie im `#spieler` ab, wird alle 30 s neu geladen), dann KI-Filme, dann Themen-Filme.
 - Button „🎬 Alle Filme“ (`#galerie`, ui.js): fertige Videos (Abspielen im `#spieler`), KI-Filme, Themen-Filme, eigene Skripte; jeweils Ansehen oder Exportieren.
 - Exporte von dort gehen in die Warteschlange `/api/stapel` (server.mjs). Sie laufen nacheinander als eigene Prozesse `server.mjs --render … --stimme … --sprechtempo … --alter …`. Themen-Filme werden vorher als Skript nach `~/.cache/blockfilm/stapel/` geschrieben.
 

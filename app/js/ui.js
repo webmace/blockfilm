@@ -964,16 +964,26 @@
   // ---------- Film-Leiste: alle fertigen Filme und gespeicherten KI-Filme zum Auswählen ----------
   const FILM_ICON = { technik: '📱', viren: '🦠', koerper: '🫀', klima: '🌍', himmelblau: '🌤️', geister: '👻', herbst: '🍂', schwarzesloch: '⚫', tagundnacht: '🌗', umlaufbahn: '🌙', mathe: '➗', dinos: '🦖', erdestopp: '🌀' };
   const KURZNAME = { technik: 'Handys & Computer', viren: 'Viren', koerper: 'Körper', klima: 'Klima', himmelblau: 'Himmel blau', geister: 'Durch Wände?', herbst: 'Herbstblätter', schwarzesloch: 'Schwarzes Loch', tagundnacht: 'Tag & Nacht', umlaufbahn: 'Mond', mathe: 'Mathe', dinos: 'Dinosaurier', erdestopp: 'Erde bleibt stehen?' };
-  let filmListeKI = [];
+  let filmListeKI = [], filmListeVideos = [];
   async function filmleisteLaden() {
     try { filmListeKI = (await api('/api/filmliste')).ki || []; } catch { filmListeKI = []; }
+    try { filmListeVideos = ((await api('/api/exporte')).fertig || []).filter(v => !v.kaputt); } catch { filmListeVideos = []; }
     filmleisteZeigen();
+  }
+  function videoAbspielen(datei, name) {
+    if (S.spielt) spielen(false);
+    $('spielerTitel').textContent = '▶ ' + name;
+    $('spielerVideo').src = '/api/roh?p=' + encodeURIComponent(datei);
+    $('spielerOrdner').onclick = () => post('/api/oeffnen', { pfad: datei.replace(/\/[^/]*$/, '') });
+    $('spieler').hidden = false;
+    $('spielerVideo').play().catch(() => {});
   }
   function filmleisteZeigen() {
     const aktTitel = S.ki ? S.ki.thema : (kt.value || '').trim();
     const fertig = Object.entries(BF.THEMEN || {}).map(([k, th]) => `<button data-thema="${k}" title="${esc(th.name)}" class="${!S.ki && aktTitel === th.name ? 'aktiv' : ''}">${FILM_ICON[k] || '🎬'} ${esc(KURZNAME[k] || th.name)}</button>`).join('');
     const ki = filmListeKI.map(f => `<button class="ki${S.datei === f.pfad ? ' aktiv' : ''}" data-pfad="${esc(f.pfad)}" title="KI-Film: ${esc(f.thema)}${f.alter ? ' (' + esc(f.alter) + ' Jahre)' : ''} – gespeichert ${new Date(f.zeit).toLocaleString('de-DE')}">🤖 ${esc(f.thema.length > 38 ? f.thema.slice(0, 36) + '…' : f.thema)}<span class="fl-weg" data-weg="${esc(f.pfad)}" title="Diesen KI-Film löschen">✕</span></button>`).join('');
-    $('flListe').innerHTML = (ki ? ki + '<span class="fl-trenner"></span>' : '') + fertig;
+    const videos = filmListeVideos.map(v => `<button class="video" data-video="${esc(v.datei)}" data-name="${esc(v.name)}" title="Fertiges Video: ${esc(v.name)} – ${new Date(v.zeit).toLocaleString('de-DE')} (${(v.groesse / 1048576).toFixed(0)} MB). Klick spielt es ab.">▶ ${esc(v.name.length > 38 ? v.name.slice(0, 36) + '…' : v.name)}</button>`).join('');
+    $('flListe').innerHTML = (videos ? videos + '<span class="fl-trenner"></span>' : '') + (ki ? ki + '<span class="fl-trenner"></span>' : '') + fertig;
   }
   $('flListe').addEventListener('click', async e => {
     const weg = e.target.closest('[data-weg]');
@@ -985,6 +995,7 @@
       return filmleisteLaden();
     }
     const b = e.target.closest('button'); if (!b) return;
+    if (b.dataset.video) return videoAbspielen(b.dataset.video, b.dataset.name);
     if (S.export) return status('Während ein Video gespeichert wird, kann kein anderer Film geladen werden.');
     if (S.geaendert && S.modus === 'skript' && !confirm('Dein Skript ist noch nicht gespeichert. Trotzdem einen anderen Film laden?')) return;
     if (b.dataset.pfad) { await oeffnePfad(b.dataset.pfad); status('🎞️ KI-Film geladen. Drück ▶ zum Anschauen.'); }
@@ -1000,6 +1011,8 @@
   // Mausrad scrollt die Leiste seitwärts
   $('flListe').addEventListener('wheel', e => { if (Math.abs(e.deltaY) > Math.abs(e.deltaX)) { $('flListe').scrollLeft += e.deltaY; e.preventDefault(); } }, { passive: false });
   setTimeout(filmleisteLaden, 800);
+  // neu fertig gewordene Videos (Hintergrund- und Nacht-Exporte) erscheinen von selbst
+  setInterval(() => { if (!document.hidden) filmleisteLaden(); }, 30000);
 
   // ---------- Film-Übersicht: alle Filme ansehen, fertige Videos abspielen, im Hintergrund exportieren ----------
   let galDaten = { ki: [], eigene: [], videos: [], stapel: { warten: [], laeuft: null, fertig: [] } };
@@ -1058,7 +1071,7 @@
   $('galerie').addEventListener('click', async e => {
     const b = e.target.closest('button'); if (!b) return;
     const d = b.dataset, alter = $('kiAlter').value;
-    if (d.video) { $('spielerTitel').textContent = '▶ ' + d.name; $('spielerVideo').src = '/api/roh?p=' + encodeURIComponent(d.video); $('spielerOrdner').onclick = () => post('/api/oeffnen', { pfad: d.video.replace(/\/[^/]*$/, '') }); $('spieler').hidden = false; $('spielerVideo').play().catch(() => {}); }
+    if (d.video) videoAbspielen(d.video, d.name);
     else if (d.ordner) post('/api/oeffnen', { pfad: d.ordner.replace(/\/[^/]*$/, '') });
     else if (d.ansehen) filmAnsehen(async () => { await oeffnePfad(d.ansehen); });
     else if (d.thema) filmAnsehen(async () => { const th = BF.THEMEN[d.thema]; S.ki = null; S.datei = null; kiAnsicht(); modus('text'); kt.value = th.name; klartextUebersetzen(); });
