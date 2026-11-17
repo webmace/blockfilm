@@ -102,7 +102,7 @@ verstecke2d st1
 & verstecke2d st3
 & verstecke2d st4
 & verstecke2d satellit
-kapitel "3. Wie bei einer Vollbremsung" 3
+kapitel "3. Wenn sie plötzlich anhalten würde" 3
 hintergrund erde in 2
 symbol2d bus "🚌" bei -44 -6 groesse 12
 & symbol2d fahrgast "🧍" bei -44 -4 groesse 5
@@ -238,7 +238,7 @@ sprecher@10+ "Würde sich die Erde in weniger als anderthalb Stunden einmal dreh
 warte 1
 verstecke2d erde5
 & verstecke2d pizza
-kapitel "9. Ein Leben mit einem Jahres-Tag" 3
+kapitel "9. Wie wäre ein Leben mit einem Jahres-Tag?" 3
 hintergrund zimmer in 2
 kind2d kind7 bei -20 -11 groesse 12
 & ton plopp

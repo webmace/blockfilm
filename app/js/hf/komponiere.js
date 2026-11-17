@@ -121,7 +121,7 @@
     const tx = e.tx, T = stil.text;
     const farbe = /^#?f{3,6}$/i.test(tx.farbe || '#fff') ? null : HF.stilFarbe(stil, tx.farbe);
     const st = farbe ? ` style="color:${farbe}"` : '';
-    if (e.art === 'karte' && tx.spannung) return `<div class="flaeche"></div><div class="kreis k1"></div><div class="kreis k2"></div><div class="spannung-titel">WAS WÄRE, WENN …?</div><div class="band"><span${st}>${worte(tx.text, stil.schrift.versal)}</span></div>`;
+    if (e.art === 'karte' && tx.spannung) return `<div class="flaeche"></div><div class="kreis k1"></div><div class="kreis k2"></div>${tx.theorie ? '<div class="spannung-titel">WAS WÄRE, WENN …?</div>' : ''}<div class="band"><span${st}>${worte(tx.text, stil.schrift.versal)}</span></div>`;
     if (e.art === 'karte') return `<div class="flaeche"></div><div class="kreis k1"></div><div class="kreis k2"></div><div class="band"><span${st}>${worte(tx.text, stil.schrift.versal)}</span></div>`;
     if (e.art === 'unter') return `<span class="pille">${esc(tx.text)}</span>`;
     if (e.art === 'titel') return `<div class="gross"${st}>${worte(tx.text, stil.schrift.versal)}</div>`;
@@ -346,18 +346,18 @@ ${HF.SKRIPTE.map(s => `<script src="${basis}${s}"></script>`).join('\n')}
         const fl = el.querySelector('.flaeche'), band = el.querySelector('.band'), kr = el.querySelectorAll('.kreis'), ti = el.querySelector('.spannung-titel'), w = el.querySelectorAll('.wort');
         tl.fromTo(fl, { opacity: 0 }, { opacity: 1, duration: 0.25, ease: 'none', immediateRender: false }, e.t0);
         tl.fromTo(kr, { scale: 0.4, opacity: 0 }, { scale: 1.1, opacity: 1, duration: 1.2, ease: 'power2.out', stagger: 0.1, immediateRender: false }, e.t0);
-        tl.fromTo(ti, { opacity: 0, y: -30, letterSpacing: '0.5em' }, { opacity: 1, y: 0, letterSpacing: '0.12em', duration: 0.6, ease: 'power3.out', immediateRender: false }, e.t0 + 0.05);
+        if (ti) tl.fromTo(ti, { opacity: 0, y: -30, letterSpacing: '0.5em' }, { opacity: 1, y: 0, letterSpacing: '0.12em', duration: 0.6, ease: 'power3.out', immediateRender: false }, e.t0 + 0.05);
         if (e.tx.spannung === 'kind') {
           // fröhlich: das Band hüpft federnd herein und wackelt lustig, statt hereinzuknallen
           tl.fromTo(band, { scale: 0, rotation: -12 }, { scale: 1, rotation: 0, duration: 0.8, ease: 'elastic.out(1, 0.45)', immediateRender: false }, e.t0 + 0.25);
-          tl.fromTo(ti, { rotation: -3 }, { rotation: 3, duration: 0.35, ease: 'sine.inOut', yoyo: true, repeat: 5, immediateRender: false }, e.t0 + 0.6);
+          if (ti) tl.fromTo(ti, { rotation: -3 }, { rotation: 3, duration: 0.35, ease: 'sine.inOut', yoyo: true, repeat: 5, immediateRender: false }, e.t0 + 0.6);
         } else {
           tl.fromTo(band, { scale: 1.9, opacity: 0, rotation: -4 }, { scale: 1, opacity: 1, rotation: 0, duration: 0.45, ease: 'expo.out', immediateRender: false }, e.t0 + 0.3);
           tl.fromTo(band, { x: -10 }, { x: 10, duration: 0.05, ease: 'none', yoyo: true, repeat: e.tx.spannung === 'voll' ? 5 : 3, immediateRender: false }, e.t0 + 0.75);
           tl.set(band, { x: 0 }, e.t0 + 1.05);
         }
         tl.fromTo(w, { opacity: 0 }, { opacity: 1, duration: 0.2, stagger: 0.05, immediateRender: false }, e.t0 + 0.35);
-        if (ende) tl.to([fl, ...kr, band, ti], { opacity: 0, duration: 0.35, ease: 'none' }, e.t1 - 0.35);
+        if (ende) tl.to([fl, ...kr, band, ti].filter(Boolean), { opacity: 0, duration: 0.35, ease: 'none' }, e.t1 - 0.35);
       } else if (e.art === 'karte') {
         const fl = el.querySelector('.flaeche'), band = el.querySelector('.band'), kr = el.querySelectorAll('.kreis'), w = el.querySelectorAll('.wort');
         tl.fromTo(fl, { opacity: 0 }, { opacity: 1, duration: 0.3, ease: 'none', immediateRender: false }, e.t0);
@@ -527,7 +527,7 @@ ${HF.SKRIPTE.map(s => `<script src="${basis}${s}"></script>`).join('\n')}
         const sx0 = Math.max(0, k.x0), sx1 = Math.min(W, k.x1), sy0 = Math.max(0, k.y0), sy1 = Math.min(H, k.y1);
         if (sx1 - sx0 < 4 || sy1 - sy0 < 4) continue;
         const wert = Math.sqrt((sx1 - sx0) * (sy1 - sy0)) * (passt(objWorte(e)) ? 2.5 : 1) * (e.o.auto ? 0.25 : 1);
-        if (wert > bestM) { bestM = wert; motiv = { x0: sx0, x1: sx1, y0: sy0, y1: sy1, id: e.id }; }
+        if (wert > bestM) { bestM = wert; motiv = { x0: sx0, x1: sx1, y0: sy0, y1: sy1, id: e.id, e }; }
       }
       // Dinge, die der alte Zeichner malt (z. B. das schwarze Loch), aus ihrer Weltposition
       {
@@ -539,12 +539,25 @@ ${HF.SKRIPTE.map(s => `<script src="${basis}${s}"></script>`).join('\n')}
           if (wert > bestM && X > 0 && X < W && Y > 0 && Y < H) { bestM = wert; motiv = { x0: X - R, x1: X + R, y0: Y - R, y1: Y + R, id: null }; }
         }
       }
+      // mehrere gleiche Dinge (z. B. eine Reihe Sterne) gehören zusammen zum Motiv
+      const gruppe = new Set();
+      if (motiv && motiv.e) {
+        for (const e of P.objekte) {
+          if (e === motiv.e || e.o.auto || e.o.typ !== motiv.e.o.typ || (e.o.art || '') !== (motiv.e.o.art || '') || !(e.t0 + 0.3 <= t && t < e.t1)) continue;
+          const el = document.getElementById(e.id);
+          if (!el || getComputedStyle(el).display === 'none') continue;
+          const r = inhaltRect(el);
+          if (r.width < 3 || r.height < 3) continue;
+          motiv.x0 = Math.max(0, Math.min(motiv.x0, (r.left - fr.left) / sk)); motiv.x1 = Math.min(W, Math.max(motiv.x1, (r.right - fr.left) / sk));
+          motiv.y0 = Math.max(0, Math.min(motiv.y0, (r.top - fr.top) / sk)); motiv.y1 = Math.min(H, Math.max(motiv.y1, (r.bottom - fr.top) / sk));
+          gruppe.add(e.id);
+        }
+      }
       if (!motiv) motiv = { x0: W * 0.35, x1: W * 0.65, y0: H * 0.3, y1: H * 0.7 };
       const mx = (motiv.x0 + motiv.x1) / 2, my = (motiv.y0 + motiv.y1) / 2, mw = motiv.x1 - motiv.x0, mh = motiv.y1 - motiv.y0;
-      // Text auf die Seite, auf der weniger ist; das Motiv rückt auf die andere Seite und wird größer
-      const textLinks = mx >= W * 0.5;
-      const z = clamp(Math.min(H * 0.62 / mh, W * 0.5 / mw), 1, 1.8);
-      const zx = textLinks ? W * 0.68 : W * 0.32, zy = H * 0.52;
+      // Aufbau wie ein Playlist-Bild: großer Titel oben in der Mitte, darunter groß und mittig das Motiv
+      const z = clamp(Math.min(H * 0.66 / mh, W * 0.78 / mw), 1, 2.4);
+      const zx = W * 0.5, zy = H * 0.6;
       const tx = clamp(zx - mx * z, W - W * z, 0), ty = clamp(zy - my * z, H - H * z, 0);
       film.style.transformOrigin = '0 0';
       film.style.transform = `translate(${r2(tx)}px,${r2(ty)}px) scale(${r2(z)})`;
@@ -560,17 +573,17 @@ ${HF.SKRIPTE.map(s => `<script src="${basis}${s}"></script>`).join('\n')}
       // Text
       const text = String(V.text || HF.kurzTitel(F.titel) || '').trim().toUpperCase();
       const worte = text.split(/\s+/).filter(Boolean);
-      const lang = text.length, fs = W * (lang <= 8 ? 0.115 : lang <= 14 ? 0.095 : lang <= 22 ? 0.078 : 0.062);
-      const schrift = String(stil.schrift.titel).replace(/"/g, "'"), gelb = stil.palette.gelb || '#ffd83a';
-      const html = worte.map((w, i) => `<span${i === worte.length - 1 && worte.length > 1 ? ` style="color:${gelb}"` : ''}>${esc(w)}</span>`).join(' ');
+      const fs = H * 0.21;
+      const schrift = String(stil.schrift.titel).replace(/"/g, "'");
+      const html = worte.map(w => `<span>${esc(w)}</span>`).join(' ');
       const d = document.createElement('div');
       d.id = 'vorschauTitel';
       d.style.cssText = `position:absolute;left:${r2(fr.left)}px;top:${r2(fr.top)}px;width:${W}px;height:${H}px;pointer-events:none;z-index:99999;overflow:hidden`;
       const R = Math.max(mw, mh) * z / 2;
       d.innerHTML = `<div style="position:absolute;inset:0;background:radial-gradient(circle at ${r2(px)}px ${r2(py)}px,rgba(255,255,255,0) ${r2(R * 0.8)}px,rgba(255,255,255,.2) ${r2(R * 1.05)}px,rgba(255,255,255,0) ${r2(R * 1.8)}px)"></div>`
         + `<div style="position:absolute;inset:0;background:radial-gradient(ellipse at ${r2(px)}px ${r2(py)}px,rgba(0,0,0,0) 35%,rgba(0,0,0,.5) 100%)"></div>`
-        + `<div style="position:absolute;inset:0;background:linear-gradient(${textLinks ? '90deg' : '270deg'},rgba(0,0,0,.35),rgba(0,0,0,0) 50%)"></div>`
-        + `<div class="vt-text" style="position:absolute;${textLinks ? 'left' : 'right'}:${r2(W * 0.05)}px;top:50%;transform:translateY(-50%);width:${r2(W * 0.44)}px;text-align:${textLinks ? 'left' : 'right'};font-family:${schrift},sans-serif;font-weight:900;font-size:${r2(fs)}px;line-height:.98;letter-spacing:-.01em;color:#fff;text-shadow:0 ${r2(H * 0.008)}px 0 rgba(0,0,0,.35),0 0 ${r2(H * 0.05)}px rgba(0,0,0,.45)">${html}</div>`;
+        + `<div style="position:absolute;inset:0;background:linear-gradient(180deg,rgba(0,0,0,.45),rgba(0,0,0,0) 42%)"></div>`
+        + `<div class="vt-text" style="position:absolute;left:${r2(W * 0.05)}px;right:${r2(W * 0.05)}px;top:${r2(H * 0.055)}px;text-align:center;white-space:nowrap;font-family:${schrift},sans-serif;font-weight:900;font-size:${r2(fs)}px;line-height:1;letter-spacing:.01em;color:#fff;text-shadow:0 ${r2(H * 0.008)}px 0 rgba(0,0,0,.3),0 0 ${r2(H * 0.04)}px rgba(0,0,0,.45)">${html}</div>`;
       const css = document.createElement('style');
       css.textContent = 'body.vorschaubild .txt,body.vorschaubild .uebl,body.vorschaubild .schilde{display:none!important}';
       document.head.appendChild(css);
@@ -579,12 +592,17 @@ ${HF.SKRIPTE.map(s => `<script src="${basis}${s}"></script>`).join('\n')}
       {
         const box = d.querySelector('.vt-text'), dk0 = d.getBoundingClientRect().width / W;
         let gr = fs;
-        for (let n = 0; n < 30; n++) {
-          const breit = Math.max(...[...box.querySelectorAll('span')].map(x => x.getBoundingClientRect().width)) / dk0;
-          if (breit <= W * 0.44 && box.getBoundingClientRect().height / dk0 <= H * 0.62) break;
-          gr *= 0.93; box.style.fontSize = r2(gr) + 'px';
+        const zuBreit = () => box.scrollWidth / dk0 > W * 0.9 + 1 || box.getBoundingClientRect().width / dk0 > W * 0.9 + 1;
+        for (let n = 0; n < 40 && zuBreit() && gr > H * 0.11; n++) { gr *= 0.95; box.style.fontSize = r2(gr) + 'px'; }
+        if (zuBreit()) {
+          // lange Titel: zwei Zeilen
+          box.style.whiteSpace = 'normal'; gr = H * 0.14; box.style.fontSize = r2(gr) + 'px';
+          for (let n = 0; n < 40; n++) {
+            const breit = Math.max(...[...box.querySelectorAll('span')].map(x => x.getBoundingClientRect().width)) / dk0;
+            if (breit <= W * 0.9 && box.getBoundingClientRect().height / dk0 <= H * 0.34) break;
+            gr *= 0.94; box.style.fontSize = r2(gr) + 'px';
+          }
         }
-        box.style.whiteSpace = 'normal';
       }
       const dr = d.getBoundingClientRect(), te = d.querySelector('.vt-text').getBoundingClientRect(), dk = dr.width / W;
       const tr = { x0: (te.left - dr.left) / dk, x1: (te.right - dr.left) / dk, y0: (te.top - dr.top) / dk, y1: (te.bottom - dr.top) / dk };
@@ -598,7 +616,7 @@ ${HF.SKRIPTE.map(s => `<script src="${basis}${s}"></script>`).join('\n')}
         const ganz = (x1 - x0) * (y1 - y0), drin = Math.max(0, Math.min(W, x1) - Math.max(0, x0)) * Math.max(0, Math.min(H, y1) - Math.max(0, y0));
         const unterText = Math.max(0, Math.min(x1, tr.x1) - Math.max(x0, tr.x0)) * Math.max(0, Math.min(y1, tr.y1) - Math.max(y0, tr.y0));
         const istText = e.o.typ === 'zahl' && !e.o.ohneRand;
-        if (e.id !== motiv.id && (istText || drin < ganz * 0.6 || unterText > ganz * 0.12)) el.style.visibility = 'hidden';
+        if (e.id !== motiv.id && (istText || drin < ganz * (gruppe.has(e.id) ? 0.97 : 0.6) || unterText > ganz * 0.12)) el.style.visibility = 'hidden';
       }
       return { t, text, zoom: r2(z), motiv: [r2(mx), r2(my)] };
     };

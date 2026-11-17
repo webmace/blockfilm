@@ -273,12 +273,12 @@
       }
       // Regie-Prüfung: die KI schaut sich Standbilder ihres Films an und bessert nach
       let regie = null;
-      if ($('kiRegie').checked) {
+      { // Regie-Prüfung läuft bei jedem KI-Film
         clearInterval(uhr);
         const start3 = Date.now();
         uhr = setInterval(() => kiStatus(`🎬 Die KI schaut sich ihren Film an und bessert nach … ${Math.round((Date.now() - start3) / 1000)} s`, 'laeuft'), 500);
         try {
-          // bis zu zwei Runden: die zweite nur, wenn die automatische Prüfung danach noch etwas findet
+          // bis zu zwei Runden: die zweite schaut sich die Nachbesserung der ersten noch einmal an
           const notizen = [];
           for (let runde = 1; runde <= 2; runde++) {
             regie = await regiePruefung(r.skript, { thema, alter, stil });
@@ -293,7 +293,6 @@
               if (neu && pr && !pr.fehler.length) { r.skript = neu; notizen.push(...regie.notizen); }
               else { regie = { ok: false, fehler: 'Die Nachbesserung hatte Fehler, die vorige Fassung bleibt.' }; break; }
             } else break;
-            if (!regieRest(r.skript, alter).length) break;
           }
           if (notizen.length) regie = { ok: true, geaendert: true, notizen };
         } catch (e) { regie = { ok: false, fehler: e.message }; }
@@ -337,11 +336,6 @@
       $('kiLos').disabled = false;
     }
   }
-  // Was die automatische Prüfung an einem Skript noch findet
-  function regieRest(skript, alter) {
-    const alt = BF.hf.standardAlter; BF.hf.standardAlter = alter;
-    try { const F = BF.kompiliere(skript); return BF.hf.passt(F) ? BF.hf.regieBefunde(F, skript) : []; } finally { BF.hf.standardAlter = alt; }
-  }
   // Film übersetzen, Befunde sammeln, Komposition bauen; der Server macht Standbilder und fragt die KI
   async function regiePruefung(skript, info) {
     const altAlter = BF.hf.standardAlter;
@@ -350,13 +344,11 @@
       const sprach = Object.assign({}, BF.sprachDauer);
       const F = BF.kompiliere(skript);
       if (!BF.hf.passt(F)) return null; // Filme mit 3D-Blockwelt werden (noch) nicht geprüft
-      const befunde = BF.hf.regieBefunde(F, skript), momente = BF.hf.regieMomente(F, 10);
+      const befunde = BF.hf.regieBefunde(F, skript), momente = BF.hf.regieMomente(F, 12);
       const html = BF.hf.komponiere(F, { skript, sprachDauer: sprach, alter: info.alter, breite: 1280, hoehe: Math.round(1280 * (F.hoehe || 1080) / (F.breite || 1920)), vorschau: true, ton: null, basis: '/' });
       return await post('/api/ki/regie', Object.assign({}, info, { skript, html, momente, befunde }));
     } finally { BF.hf.standardAlter = altAlter; }
   }
-  try { const v = localStorage.getItem('bf_kiRegie'); if (v !== null) $('kiRegie').checked = v === '1'; } catch {}
-  $('kiRegie').addEventListener('change', () => { try { localStorage.setItem('bf_kiRegie', $('kiRegie').checked ? '1' : '0'); } catch {} });
   const skriptOhneKopf = () => ta.value.split('\n').filter(z => !z.startsWith('#KI ')).join('\n');
   $('kiLos').onclick = kiFilm;
   // Alter gilt für alle Filme: bei Änderung fertige Filme neu zusammenstellen
@@ -1373,7 +1365,7 @@ alex sagt "Wow!!"
         auftrag = await api('/api/tagesvideo/auftrag');
         if (!auftrag.ok) throw new Error(auftrag.fehler);
         S.tagesModus = true; S.ki = null; kiAnsicht();
-        $('kiAlter').value = auftrag.alter; $('kiStil').value = 'echt'; $('kiRegie').checked = true;
+        $('kiAlter').value = auftrag.alter; $('kiStil').value = 'echt';
         $('kiThema').value = auftrag.thema;
         await kiFilm();
         if (!S.kiErgebnis || !S.kiErgebnis.ok) throw new Error((S.kiErgebnis && S.kiErgebnis.fehler) || 'Die KI konnte keinen Film schreiben.');

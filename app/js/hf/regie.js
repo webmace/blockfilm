@@ -91,8 +91,12 @@
     if (!sp.length) return [{ t: Math.min(2, F.dauer / 2), satz: '' }];
     for (let i = 0; i < anzahl; i++) {
       const s = sp[Math.min(sp.length - 1, Math.round((i + 0.5) * sp.length / anzahl - 0.5))];
-      const t = Math.round(((s.t0 + s.t1) / 2) * 10) / 10;
-      if (!m.some(x => Math.abs(x.t - t) < 0.5)) m.push({ t, satz: s.text });
+      // je Satz zwei Bilder: kurz nach dem Anfang und kurz vor dem Ende – so sieht die Regie, ob das Bild rechtzeitig zum Ton kommt
+      if (m.some(x => x.satz === s.text && Math.abs(x.t - s.t0) < s.t1 - s.t0 + 0.5)) continue;
+      const r = x => Math.round(x * 10) / 10, lang = s.t1 - s.t0 > 1.6;
+      const a = r(lang ? s.t0 + 0.5 : (s.t0 + s.t1) / 2), e = r(s.t1 - 0.3);
+      m.push({ t: a, satz: s.text, teil: lang ? 'Anfang' : 'Mitte' });
+      if (lang) m.push({ t: e, satz: s.text, teil: 'Ende' });
     }
     return m;
   };

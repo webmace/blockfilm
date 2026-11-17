@@ -27,8 +27,11 @@
     const W = F.w2d, sp = (F.sprache || []).slice().sort((a, b) => a.t0 - b.t0);
     const karten = F.texte.filter(x => x.karte).sort((a, b) => a.t0 - b.t0);
     // 1. Kapitelkarten: besonders gestaltet, mit Tusch (für kleine Kinder: Tada und Glitzer)
+    // nur Kapitel, die etwas Ausgedachtes durchspielen, bekommen die Überschrift „Was wäre, wenn …?“
+    const THEORIE = /\b(waere|waeren|wuerde|wuerden|wuerdest|haette|haetten|koennte|koennten|muesste|muessten|gaebe)\b|\bwenn\b|\bstell\s+(dir|euch)\s+vor\b|gedankenexperiment|angenommen|\bvariante\b|\btheorie\b/;
     for (const k of karten) {
       k.spannung = stufe;
+      k.theorie = THEORIE.test(norm(k.text)) || WAS_WAERE.test(norm(k.text));
       if (stufe === 'kind') { F.toene.push({ t: k.t0 + 0.3, art: 'tada', vol: 0.8 }); F.toene.push({ t: k.t0 + 0.05, art: 'magie', vol: 0.7 }); }
       else { F.toene.push({ t: k.t0 + 0.3, art: 'tusch', vol: stufe === 'voll' ? 0.9 : 0.6 }); F.toene.push({ t: Math.max(0, k.t0 - 0.2), art: 'spannung', vol: stufe === 'voll' ? 0.8 : 0.45, dauer: Math.min(2.5, k.t1 - k.t0 + 0.2) }); }
     }

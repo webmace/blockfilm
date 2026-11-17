@@ -310,9 +310,19 @@ async function regieBilder(html, momente) {
     const out = [];
     for (const m of momente) {
       await seite.evaluate(t => window.__bfZeige(t), Number(m.t) || 0);
-      const daten = await seite.screenshot({ type: 'jpeg', quality: 72, encoding: 'base64' });
-      out.push({ t: m.t, satz: String(m.satz || '').slice(0, 300), daten });
+      const daten = await seite.screenshot({ type: 'jpeg', quality: 66, encoding: 'base64' });
+      out.push({ t: m.t, satz: String(m.satz || '').slice(0, 300), teil: m.teil, daten });
     }
+    // zum Schluss das Vorschaubild (verändert die Seite, darum als Letztes)
+    try {
+      if (await seite.evaluate(() => typeof window.__bfVorschaubild === 'function')) {
+        const info = await seite.evaluate(() => window.__bfVorschaubild());
+        await seite.evaluate(() => document.fonts.ready);
+        await new Promise(r => setTimeout(r, 200));
+        const daten = await seite.screenshot({ type: 'jpeg', quality: 80, encoding: 'base64', clip: { x: 0, y: 0, width: 1280, height: 720 } });
+        out.push({ t: info && info.t, vorschaubild: true, text: info && info.text, daten });
+      }
+    } catch (e) { console.error('Regie-Vorschaubild:', e.message); }
     return out;
   } finally {
     regieSeiten.delete(id);
@@ -557,7 +567,7 @@ async function anfrage(req, res) {
     if (p === '/api/ki/regie' && req.method === 'POST') {
       const o = JSON.parse((await koerper(req)).toString('utf8'));
       let bilder = [];
-      try { bilder = await regieBilder(String(o.html || ''), (o.momente || []).slice(0, 12)); }
+      try { bilder = await regieBilder(String(o.html || ''), (o.momente || []).slice(0, 26)); }
       catch (e) { console.error('Regie-Standbilder:', e.message); }
       return json(res, Object.assign(await kiRegie({ thema: String(o.thema || '').slice(0, 500), alter: o.alter, stil: o.stil, skript: String(o.skript || ''), befunde: (o.befunde || []).slice(0, 30).map(String), bilder }), { bilder: bilder.length }));
     }
