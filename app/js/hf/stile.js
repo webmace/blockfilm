@@ -108,7 +108,30 @@
 
   const ALTER = ['0-2', '3-5', '6-9', '10+'];
   HF.standardAlter = '6-9';
-  HF.stilFuer = F => STILE[(F && F.zielgruppe) || HF.standardAlter] || STILE['6-9'];
+  // Looks: ein anderes Farbkleid über dem Stil der Zielgruppe (Skriptbefehl: look leuchtend). Schrift und Bewegung bleiben.
+  // „leuchtend“: helle, knallbunte Flächen wie in großen Wissensvideos – mintgrüner Himmel, gelb-pinker Abend, kräftiges Grün und Orange.
+  const LOOKS = {
+    leuchtend: {
+      palette: { rot: '#ff3d5a', orange: '#ff9f1a', gelb: '#ffe033', gruen: '#1fe06e', tuerkis: '#2fe8d8', blau: '#2f8cff', lila: '#7a4dff', pink: '#ff5fc0', braun: '#6a3524', weiss: '#ffffff', grau: '#a9b6d6', schwarz: '#151a3a' },
+      hg: {
+        himmel: ['#8ff5d8', '#d9fff0'], boden: ['#1fe070', '#18c860', '#12a850'], berge: ['#7ff0c0', '#4fe89a'],
+        all: ['#2a1f8f', '#120a4a'], nebel: ['#ff3db0', '#2bd9ff'], abend: ['#ff7ab8', '#ffb86a', '#ffe75a'],
+        wueste: ['#fff0a0', '#ffc02a', '#ff8a1f'], schnee: ['#7fd0ff', '#ffffff', '#d0f0ff'], zimmer: ['#ffd6ea', '#ff9fd0', '#5a3fd8'],
+        mikro: ['#ff9fd8', '#c83dff'], tafel: ['#0c5a3a', '#083f2a'], meer: ['#3fe0e8', '#1f8fff', '#2a3fd0'], urzeit: ['#c8ffe8', '#2bff7a', '#ffa61a'],
+      },
+      form: { rund: 0.6, glow: 0.45, schatten: 0.2 },
+      text: { band: '#2f9bff', bandText: '#ffffff', unter: 'rgba(21,26,58,0.82)', karte: ['#ff5fc0', '#7a4dff'] },
+    },
+  };
+  HF.LOOKS = LOOKS;
+  const lookCache = {};
+  HF.stilFuer = F => {
+    const alter = STILE[F && F.zielgruppe] ? F.zielgruppe : STILE[HF.standardAlter] ? HF.standardAlter : '6-9';
+    const basis = STILE[alter], L = F && F.look && LOOKS[F.look];
+    if (!L) return basis;
+    const k = alter + '|' + F.look;
+    return lookCache[k] || (lookCache[k] = Object.assign({}, basis, { name: basis.name + ' ' + F.look, palette: L.palette, hg: L.hg, form: Object.assign({}, basis.form, L.form), text: L.text }));
+  };
 
   // Farbe aus dem Skript (Hex) → passender Stil-Ton (nach Farbton, Sättigung, Helligkeit)
   const NAMEN = { pink: 'pink', rosa: 'pink', magenta: 'pink', red: 'rot', rot: 'rot', blue: 'blau', blau: 'blau', green: 'gruen', gruen: 'gruen', yellow: 'gelb', gelb: 'gelb', orange: 'orange', purple: 'lila', lila: 'lila', violett: 'lila', tuerkis: 'tuerkis', cyan: 'tuerkis', brown: 'braun', braun: 'braun', white: 'weiss', weiss: 'weiss', black: 'schwarz', schwarz: 'schwarz', grau: 'grau', gray: 'grau', grey: 'grau' };
@@ -140,6 +163,14 @@
     if (a === '10' || a === '10plus' || a === 'erwachsene') a = '10+';
     if (!ALTER.includes(a)) throw new Error('So: zielgruppe 0-2 | 3-5 | 6-9 | 10+');
     h.F.zielgruppe = a;
+    return 0;
+  };
+  // Skriptbefehl: look leuchtend   (helle, knallbunte Farben; „look normal“ = Farben der Zielgruppe)
+  Z.look = function (w, t, h) {
+    const a = BF.norm ? BF.norm(String(w.wort() || '')) : String(w.wort() || '').toLowerCase();
+    if (a === 'normal' || a === 'aus') { h.F.look = null; return 0; }
+    if (!LOOKS[a]) throw new Error('So: look leuchtend | look normal');
+    h.F.look = a;
     return 0;
   };
 })();

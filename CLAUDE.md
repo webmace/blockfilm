@@ -11,6 +11,8 @@ Erklärfilm-Generator: Claude schreibt ein Skript in einer deutschen Befehlsspra
 ## Zwei Renderer
 - **HyperFrames** (`app/js/hf/`): für Filme, die nur die 2D-Welt nutzen (`BF.hf.passt(F)`). Flat-Look im Kurzgesagt-Stil, je nach Zielgruppe.
   - `stile.js`: ein Stil pro Zielgruppe `0-2 | 3-5 | 6-9 | 10+` (Palette, Schrift, Rundheit, GSAP-Eases). Dazu der Skriptbefehl `zielgruppe`.
+  - Looks (`HF.LOOKS` in `stile.js`, Skriptbefehl `look leuchtend`): ersetzen Palette, Hintergrundfarben und Textfarben des Zielgruppen-Stils; `HF.stilFuer(F)` mischt sie ein. `/waswaere` benutzt `look leuchtend` mit Zielgruppe 10+.
+  - `fledermaus2d.js` (Befehle, Zeichnung und Verhalten in einer Datei): `fledermaus2d`, `fledermaeuse2d` (Gruppe `name1…N`), `maskottchen fledermaus` (setzt `F.maskottchenArt`; ein `nachKompilieren`-Hook gibt allen `schleim`-Objekten `art: 'fledermaus'`, `OB.schleim`/`BW.schleim` leiten dann auf die Fledermaus um). `/waswaere` benutzt Fledermäuse statt Glib und statt Menschen.
   - `grafik.js`: SVG-Hintergründe mit Parallax-Ebenen und SVG-Objekte. `HF.portiert(o)` sagt, welche 2D-Objekte schon als SVG existieren.
   - `rest2d.js`: alle übrigen 2D-Objekte (Akku, Atome, Auge, Bits, Blatt, Geist, Hülle, Kaktus, Kontinente, Luft, Mast, Meteor, Pinguin, Pixel, Pizza, Rakete, Regenbogen, Thermometer, Vulkan, Wand, Zeitleiste). Nur das schwarze Loch (`loch`) zeichnet bewusst weiter der alte Zeichner (Gravitationslinse).
   - `twemoji-liste.js` + `app/vendor/twemoji/`: `symbol2d`-Emojis werden als flache Twemoji-SVGs gezeigt (CC-BY 4.0, siehe `LIZENZ.txt`). Der Export kopiert nur die benutzten Dateien.
@@ -63,6 +65,11 @@ Nach dem Schreiben eines KI-Films (Schalter „🎬 Regie“, nur für Filme mit
 - `app/js/hf/regie.js`: `HF.regieBefunde(F, skript)` findet automatisch leere Bilder, Objekte außerhalb oder unter den Untertiteln, Überdeckungen, lange Pausen (mit den Zeilen, die sie verursachen), volle Bilder und Emojis ohne Grafik. `HF.regieMomente` wählt die Zeitpunkte für Standbilder.
 - `/api/ki/regie` (server.mjs) rendert die Komposition mit Puppeteer, macht Standbilder (1280×720 JPEG) und ruft `kiRegie()` (ki.mjs) mit Bildern und Befunden auf. Antwort: `OK` oder ein verbessertes Skript mit kurzen Notizen.
 - `kiFilm()` (ui.js) macht höchstens zwei Runden. Die zweite gibt es nur, wenn die automatische Prüfung danach noch etwas findet. Hat die Nachbesserung Übersetzungsfehler, bleibt die vorige Fassung.
+
+## Claude-Befehl /waswaere (ohne KI-Schnittstelle)
+- Skill in `~/.claude/skills/waswaere/SKILL.md`: Claude Code schreibt selbst ein Was-wäre-wenn-Drehbuch nach den Regeln aus `ki.mjs` (`systemText`, `laenge`), speichert es mit `#KI`-Kopfzeile nach `~/Blockfilm/Skripte/KI/` und prüft es mit den beiden Werkzeugen unten. Ändern sich Regeln in `ki.mjs` grundlegend, den Skill nachziehen.
+- `bin/filmpruefung.mjs skript.txt [--alter …] [--bilder ordner] [--anzahl 12] [--bei 12.5,40] [--aussprache]`: startet einen eigenen Server auf freiem Port und die App in Puppeteer (Stimme und KI-Aufrufe werden abgefangen), gibt Übersetzungsfehler, `HF.regieBefunde` und Standbilder wie die Regie-Prüfung aus, dazu die Lautschrift-Tabelle. Ende-Code 1 = Fehler im Skript.
+- `bin/filmexport skript.txt [alter] [--1080p]`: wartet auf andere Exporte, rendert dann nach `~/Videos/Blockfilm/KI/<Name>.mp4` (Protokoll `.<Name>-lauf.txt`).
 
 ## Regeln für die Komposition
 - Deterministisch: kein `Date.now()`, kein `Math.random()` (stattdessen `HF.zufall(seed)` / `BF.rng`), keine Timer, kein `repeat: -1`. Alles muss allein von der Zeit abhängen.

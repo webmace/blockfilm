@@ -98,6 +98,11 @@ zielgruppe 3-5
 Legt den Bildstil fest (`0-2`, `3-5`, `6-9`, `10+`): Farben, Schrift und wie lebhaft Dinge erscheinen und sich bewegen. Ohne diesen Befehl gilt die Auswahl in der App. Filme nur mit der 2D-Welt werden im neuen Flat-Look (wie bei Erklärvideos auf YouTube) mit HyperFrames gebaut; Filme mit der 3D-Blockwelt sehen aus wie bisher.
 
 ```
+look leuchtend
+```
+Ein anderes Farbkleid für Filme mit der 2D-Welt: helle, knallbunte Flächen (mintgrüner Himmel, kräftig grüne Hügel, gelb-pinker Abend, leuchtendes Meer). Schrift und Bewegung bleiben wie bei der Zielgruppe. `look normal` = Farben der Zielgruppe. Steht am Anfang, direkt nach `zielgruppe`.
+
+```
 vorschaubild "Schrumpelfinger?!"
 ```
 Das Vorschaubild (Thumbnail) für das Video, im Stil großer Wissens-Kanäle: Das wichtigste Ding in diesem Moment wird herangezoomt, die Farben werden kräftiger, der Rand dunkler, Untertitel verschwinden, und daneben stehen 1–3 Wörter in großer weißer Schrift (das letzte Wort gelb). Ein weißer Hintergrund wird durch einen tiefen Farbverlauf ersetzt. `bei 42` gibt den Moment in Sekunden an; steht die Zeile ganz am Anfang des Films, sucht Blockfilm den Moment selbst (passend zum Titel). Das Bild wird beim Export als JPEG neben das Video gelegt (`film.mp4` → `film.jpg`) und in der Film-Leiste und in „Alle Filme“ gezeigt. Ohne den Befehl wird aus dem Filmtitel ein kurzer Text gemacht.
@@ -105,7 +110,8 @@ Das Vorschaubild (Thumbnail) für das Video, im Stil großer Wissens-Kanäle: Da
 ## Musik und Töne
 
 `musik froehlich` (auch: ruhig, spannend, episch, traurig, gruselig, aus) – wird beim Sprechen leiser.
-`ton explosion` (auch: schlag, plopp, sprung, landen, puff, aua, jubel, lachen, schreck, zisch, donner, rakete, knall, magie, bruch, glocke, tada, trommel, fail, level, muenze, schwung)
+`ton explosion` (auch: schlag, plopp, sprung, landen, puff, aua, jubel, lachen, schreck, zisch, donner, rakete, knall, magie, bruch, glocke, tada, trommel, fail, level, muenze, schwung, mampf, platsch, herzschlag, rascheln, wind, aufprall, bruellen, stampfen, grollen, quieken, schritt)
+Geräuschwörter im Sprecher-Text („Mampf, mampf!“, „Platsch!“, „Bumm!“, „Boing!“, „Puff!“, „Hihi!“) werden automatisch als passendes Geräusch an genau dieser Stelle abgespielt. Das Wort wird dann nicht vorgelesen (im Untertitel steht es weiter).
 
 ## 3D-Blockwelt (Zusatz)
 
@@ -200,6 +206,11 @@ Glib ist die Sprecherstimme: `sprecher`-Sätze stehen in der Ich-Form („Hallo!
 Menschenfiguren (`kind2d`), die nichts tun und im Text nicht vorkommen, werden weggelassen (`menschen bleiben` schaltet das ab).
 Dinge, die es nur einmal gibt (Mond, Sonne, Erde, Mars …), stehen nie doppelt im Bild: kommt ein neuer Mond dazu, verschwindet der alte.
 
+### Fledermäuse (unsere Figuren statt Menschen)
+`fledermaus2d bob bei -15 -11 groesse 8` – eine Fledermaus (Position = Füße). Alle sind dunkel, fast schwarz, mit großen weißen Augen. Zusätze: `links`, `fliegt` (schwebt mit Flügelschlag), `haengt` (kopfüber; die Position ist dann die Stelle, an der sie hängt). Mit `bewege2d bob zu 20 5 in 3` fliegt sie los. Sie blinzelt und schaut zum Neuesten im Bild.
+`fledermaeuse2d schwarm anzahl 6 bei 0 12 abstand 11 groesse 5 fliegt` – eine ganze Gruppe; sie heißen `schwarm1` … `schwarm6` (einzeln bewegen und mit `verstecke2d` ausblenden).
+`maskottchen fledermaus` – ganz am Anfang des Films: Der Erzähler in der Ecke ist eine Fledermaus statt Glib (ohne Namensschild). Der Sprecher redet dann nicht von Glib.
+
 ### Tiere
 `tier2d hund bei -20 -11 groesse 7` – gezeichnete Tiere: `hund`, `katze`, `vogel`, `huhn`, `eule`, `frosch`, `schildkroete`, `eidechse`, `hase`, `maus`. Ohne eigenen Namen heißt das Tier wie seine Art (`bewege2d hund zu 10 -11 in 2`). Sie atmen, blinzeln, laufen mit Beinen in ihre Richtung; Frosch und Hase hüpfen, Vögel flattern, der Hund wedelt. Tier-Emojis bei `symbol2d` (🐦 🐸 🐢 …) werden automatisch als gezeichnetes Tier gezeigt. Andere Arten bei `tier2d` sind Dinosaurier (wie `dino2d`).
 
@@ -269,4 +280,4 @@ Dinge, die es nur einmal gibt (Mond, Sonne, Erde, Mars …), stehen nie doppelt 
 | `pizza2d` | `pizza2d pizza bei 0 0 groesse 12 teile 4` · `pizzaweg2d pizza anzahl 1` |
 
 ### Ausblenden
-`verstecke2d name` blendet ein Objekt aus. Mit `hintergrund aus` geht es zurück zur 3D-Welt.
+`verstecke2d name` blendet ein Objekt aus. Mehrere auf einmal: `verstecke2d baum1 hase wolke1`. Eine ganze Gruppe (`leute1` … `leute6`): `verstecke2d leute`. Alles im Bild: `verstecke2d alles`. Mit `hintergrund aus` geht es zurück zur 3D-Welt.

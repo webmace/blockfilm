@@ -236,6 +236,7 @@
     const zufall = BF.rng(12345);
     let T = 0, letzterStart = 0, ende = 0, anker = 0;
     let begleitAnimation = null;
+    let gruppeSprecher = false; // spricht in der laufenden Gruppe (Zeile + ihre &-Zeilen) schon jemand?
     const BEGLEITBAR = new Set(['kamera2d', 'faerbe2d', 'farbe2d', 'temperatur2d', 'vermehren2d', 'teilen2d', 'dicke2d', 'wachsen2d', 'blaetterfallen2d', 'laubfallen2d', 'bewege2d', 'kippe2d', 'drift2d', 'scheibe2d', 'lupe', 'zoom', 'zeichentrick', 'himmel']);
     const warteschlange = []; // spätere Explosionen (Kettenreaktion)
 
@@ -1023,7 +1024,11 @@
         if (!parallel && istSprecher && begleitAnimation && versatz === null) { parallel = true; letzterStart = begleitAnimation.start; }
         const start = versatz !== null ? anker + versatz : parallel ? letzterStart : T;
         if (!parallel) anker = start;
-        if (BEGLEITBAR.has(befehl)) { if (!parallel || !begleitAnimation) begleitAnimation = { start }; }
+        // Eine Bewegung, die mit & unter einem Sprecher-Satz hängt, gehört zu DIESEM Satz: der nächste Satz beginnt erst danach
+        // (sonst starteten alle folgenden Sätze und ihre &-Bewegungen rechnerisch am Anfang der Kette, die Bilder liefen dem Ton davon).
+        if (!parallel) gruppeSprecher = false;
+        if (istSprecher) gruppeSprecher = true;
+        if (BEGLEITBAR.has(befehl)) { if (!parallel || (!begleitAnimation && !gruppeSprecher)) begleitAnimation = { start }; }
         else if (!parallel || istSprecher) begleitAnimation = null;
         F.zeilen.push({ zeile: zi + 1, t: start });
         abarbeiten(start);

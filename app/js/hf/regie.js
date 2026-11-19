@@ -81,6 +81,28 @@
     }
     // 5. Bildzeichen, für die es keine flache Grafik gibt (erscheinen dann als Text)
     for (const o of F.w2d.liste) if (o.typ === 'zahl' && o.ohneRand && HF.emojiDateien && !HF.emojiDateien(o.text)) B.push(`symbol2d „${o.name}“ mit „${o.text}“: dafür gibt es keine Grafik. Ein einzelnes übliches Emoji wählen.`);
+    // 6. zu viele Bildzeichen (Emoji-Sticker): höchstens etwa eins pro Minute
+    const sticker = F.w2d.liste.filter(o => o.typ === 'zahl' && o.ohneRand && !(BF.emojiTier && BF.emojiTier(o.text)));
+    const erlaubt = Math.max(3, Math.round((F.dauer || 0) / 60));
+    if (sticker.length > erlaubt) B.push(`Zu viele Bildzeichen (symbol2d): ${sticker.length}, erlaubt sind etwa ${erlaubt}. Ersetze die meisten durch gezeichnete, bewegte Objekte (z. B. ${sticker.slice(0, 6).map(o => `„${o.name}“ ${o.text}`).join(', ')}) oder lass sie weg.`);
+    // 7. Stellen, an denen sich nichts bewegt (Standbild trotz Sprecher)
+    const bewegt = (a, b) => {
+      if (F.w2d.liste.some(o => (o.t0 > a - 0.3 && o.t0 < b) || (o.t1 > a && o.t1 < b))) return true;
+      const k1 = kamera(a), k2 = kamera(b);
+      if (Math.abs(k1.x - k2.x) + Math.abs(k1.y - k2.y) > 0.5 || Math.abs(k1.z - k2.z) > 0.03) return true;
+      for (const o of sichtbar(F, a)) {
+        if (o.typ === 'schleim' || o.auto) continue;
+        for (const t of [(a + b) / 2, b]) { const p = BF.w2dIntern.pos(F, o, a), q = BF.w2dIntern.pos(F, o, t); if (Math.hypot(p[0] - q[0], p[1] - q[1]) > 0.8) return true; }
+      }
+      return (F.ueber || []).some(u => u.t0 > a - 0.3 && u.t0 < b) || F.texte.some(x => !x.sprecher && x.t0 > a - 0.3 && x.t0 < b);
+    };
+    let still = null, stillGemeldet = 0;
+    for (let i = 0; i <= sp.length; i++) {
+      const s = sp[i];
+      if (s && !bewegt(s.t0, s.t1)) { if (!still) still = { t0: s.t0, satz: s.text }; still.t1 = s.t1; continue; }
+      if (still && still.t1 - still.t0 > 7 && stillGemeldet < 6) { B.push(`Standbild von ${zeit(still.t0)} bis ${zeit(still.t1)} (ab „${kurz(still.satz)}“): da bewegt sich nichts. Lass etwas passieren (bewege2d, kippe2d, wachsen2d, kamera2d heranzoomen oder schwenken, etwas erscheint oder verschwindet).`); stillGemeldet++; }
+      still = null;
+    }
     return B.slice(0, 30);
   };
 

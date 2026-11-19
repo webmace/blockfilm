@@ -1,0 +1,29 @@
+#!/usr/bin/env bash
+# Blockfilm: ein fertiges Skript im Hintergrund als Video speichern (für den Claude-Befehl /waswaere).
+#   bin/filmexport skript.txt [alter] [--4k|--1080p|--720p]
+# Wartet, bis kein anderer Export läuft, und speichert dann nach ~/Videos/Blockfilm/KI/<Name>.mp4 (+ <Name>.jpg als Vorschaubild).
+# Das Protokoll steht in ~/Videos/Blockfilm/KI/.<Name>-lauf.txt (so zeigt auch „📋 Exporte“ den Fortschritt).
+HIER="$(cd "$(dirname "$(readlink -f "$0")")/.." && pwd)"
+SKRIPT="$1"; ALTER="$2"; AUFL="$3"
+case "$ALTER" in --*) AUFL="$ALTER"; ALTER="";; esac
+[ -f "$SKRIPT" ] || { echo "Skript nicht gefunden: $SKRIPT" >&2; exit 2; }
+AUS="$HOME/Videos/Blockfilm/KI"; mkdir -p "$AUS"
+NAME="$(basename "$SKRIPT" .txt | sed -E 's/[^[:alnum:]äöüÄÖÜß _-]+//g; s/ +/_/g')"
+ZIEL="$AUS/$NAME.mp4"; TEIL="$AUS/$NAME.teil.mp4"; LOG="$AUS/.$NAME-lauf.txt"
+# nicht gleichzeitig mit anderen Exporten (der Rechner ist sonst überlastet)
+while systemctl --user is-active -q blockfilm-nachtfilme.service || pgrep -f -- "server\.mjs --(render|tagesvideo)" >/dev/null; do sleep 60; done
+rm -f "$TEIL"
+ARGS=(--render "$SKRIPT" -o "$TEIL")
+[ -n "$ALTER" ] && ARGS+=(--alter "$ALTER")
+[ -n "$AUFL" ] && ARGS+=("$AUFL")
+if nice -n 15 ionice -c 3 systemd-inhibit --what=sleep:idle --who=Blockfilm --why="Film wird gespeichert" \
+     "$HIER/bin/blockfilm" "${ARGS[@]}" > "$LOG" 2>&1 \
+   && ffprobe -v error "$TEIL" >/dev/null 2>&1; then
+  mv "$TEIL" "$ZIEL"
+  notify-send "Blockfilm" "Film fertig: $NAME" 2>/dev/null
+  echo "FERTIG: $ZIEL"
+else
+  echo "FEHLER beim Speichern. Letzte Zeilen aus $LOG:" >&2
+  tail -c 600 "$LOG" | tr '\r' '\n' | tail -n 8 >&2
+  exit 1
+fi

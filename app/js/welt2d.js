@@ -647,7 +647,16 @@
     o.kahl.push({ t0: t, t1: t + d, zu: 0 });
     return d;
   };
-  Z.verstecke2d = function (w, t, h) { const W = w2d(h.F); const o = W.obj[w.wort()]; if (o && !(o.t1 <= t)) o.t1 = Math.min(o.t1 ?? Infinity, t + 0.4); return 0; };
+  // verstecke2d name [name2 …] · verstecke2d gruppe (blendet gruppe1 … gruppeN aus) · verstecke2d alles
+  Z.verstecke2d = function (w, t, h) {
+    const W = w2d(h.F);
+    let n;
+    while ((n = w.wort())) {
+      const ziele = W.obj[n] ? [W.obj[n]] : n === 'alles' ? W.liste : W.liste.filter(o => /\d+$/.test(o.name) && o.name.replace(/\d+$/, '') === n);
+      for (const o of ziele) if (!o.auto && o.t0 <= t && !(o.t1 <= t)) o.t1 = Math.min(o.t1 ?? Infinity, t + 0.4);
+    }
+    return 0;
+  };
   const aktuellePos = o => (o.pAkt ? o.pAkt.slice() : o.p.slice());
 
   // ---------- Auswertung ----------

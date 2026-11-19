@@ -140,7 +140,7 @@
       const { gesprochen, geraeusche } = BF.geraeuschWorte(text);
       // Geräusche vor dem ersten Wort: erst Geräusch, dann spricht er
       const vorne = geraeusche.filter(g => g.vorne);
-      vorne.forEach((g, i) => h.ton(tt + i * 0.8, g.art, { vol: 1 }));
+      vorne.forEach((g, i) => { for (let k = 0; k < (g.mal || 1); k++) h.ton(tt + i * 0.8 + k * 0.14, g.art, { vol: 1 }); });
       if (vorne.length && gesprochen) tt += vorne.length * 0.8 + 0.15;
       let dauer;
       if (gesprochen) {
@@ -149,7 +149,7 @@
         F.sprache.push({ t0: tt, t1: tt + dauer, text: gesprochen, stimme, tempo, key });
       } else dauer = 0;
       // Geräusche an die passende Stelle im Satz legen
-      geraeusche.filter(g => !g.vorne).forEach(g => h.ton(tt + dauer * g.anteil + 0.1, g.art, { vol: 1 }));
+      geraeusche.filter(g => !g.vorne).forEach(g => { for (let k = 0; k < (g.mal || 1); k++) h.ton(tt + dauer * g.anteil + 0.1 + k * 0.14, g.art, { vol: 1 }); });
       if (!gesprochen) dauer = Math.max(1.2, vorne.length * 0.8 + 0.4);
       if (!ohneUT) {
         for (const alt of F.texte) if (alt.ort === 'unten' && alt.t0 < tt && alt.t1 > tt) alt.t1 = tt;
@@ -164,9 +164,22 @@
   const GERAEUSCH_WORTE = [
     [/^raschel\w*$/i, 'rascheln'], [/^knister\w*$/i, 'rascheln'], [/^bu+m+$/i, 'schlag'], [/^rumms?$/i, 'schlag'], [/^pl(i|o)n?g+$/i, 'plopp'], [/^plopp+$/i, 'plopp'],
     [/^schwu+p+s?$/i, 'schwung'], [/^hu+i+$/i, 'wind'], [/^wu+sch+$/i, 'schwung'], [/^platsch+$/i, 'platsch'], [/^plitsch$/i, 'platsch'],
-    [/^kna+ll+$/i, 'knall'], [/^zi+sch+$/i, 'zisch'], [/^pu+ff+$/i, 'puff'], [/^ding(\s*dong)?$/i, 'glocke'], [/^tada+$/i, 'tada'], [/^ka+wu+m+$/i, 'explosion'], [/^peng$/i, 'knall'],
+    [/^kna+ll+$/i, 'knall'], [/^zi+sch+$/i, 'zisch'], [/^pu+ff+$/i, 'puff'], [/^ding-?dong$/i, 'glocke'], [/^dong$/i, 'glocke'], [/^tada+$/i, 'tada'], [/^ka+wu+m+$/i, 'explosion'], [/^peng$/i, 'knall'],
+    // Essen, Wasser, Aufprall, Springen, Tiere, Gefühle
+    [/^ma+m+p+f+$/i, 'mampf', 3], [/^mja+m+(mja+m+)?$/i, 'mampf', 3], [/^schma+tz+$/i, 'mampf', 3], [/^knu+sper\w*$/i, 'mampf', 3], [/^ha+p+s+$/i, 'mampf', 1], [/^no+m(no+m)?$/i, 'mampf', 2],
+    [/^pi+tsch$/i, 'platsch'], [/^splash$/i, 'platsch'], [/^blu+b+$/i, 'plopp'], [/^plu+p+$/i, 'plopp'],
+    [/^kra+wu+m+s?$/i, 'explosion'], [/^wu+m+s$/i, 'explosion'], [/^wu+m+$/i, 'schlag'], [/^ba+m+$/i, 'schlag'], [/^klo+n+g$/i, 'schlag'], [/^po+ch(\s*po+ch)?$/i, 'herzschlag'], [/^ba+-?bu+m+$/i, 'herzschlag'],
+    [/^kna+cks?$/i, 'bruch'], [/^kli+r+$/i, 'bruch'], [/^kra+cks$/i, 'bruch'], [/^fau+ch$/i, 'zisch'],
+    [/^bo+i+n+g+$/i, 'sprung'], [/^do+i+n+g+$/i, 'sprung'],
+    [/^hu+sch$/i, 'schwung'], [/^tara+m+$/i, 'tada'], [/^tra+ra+$/i, 'tada'],
+    [/^(ha){2,}h?$/i, 'lachen'], [/^(hi){2,}h?$/i, 'lachen'], [/^(ho){2,}h?$/i, 'lachen'], [/^ki+cher\w*$/i, 'lachen'], [/^gi+ggel\w*$/i, 'lachen'],
+    [/^gr{2,}$/i, 'bruellen'], [/^ro+a+r+$/i, 'bruellen'], [/^ra+w+r+$/i, 'bruellen'], [/^sta+m+p+f+$/i, 'stampfen'], [/^qui+e+k+$/i, 'quieken'], [/^pi+e+p+$/i, 'quieken'], [/^fi+e+p+$/i, 'quieken'],
+    [/^kli+n+g(e+li+n+g)?$/i, 'glocke'], [/^bi+m+e+l$/i, 'glocke'], [/^go+n+g$/i, 'glocke'], [/^ka-?ching$/i, 'muenze'],
+    [/^gru+m+e+l$/i, 'donner'], [/^wro+m+$/i, 'rakete'], [/^bru+m+$/i, 'rakete'], [/^ha+tschi+$/i, 'puff'],
   ];
   BF.geraeuschWorte = function (text) {
+    // „Hi hi hi“, „Ha, ha!“ → ein Wort (ein einzelnes „Hi“ zur Begrüßung bleibt)
+    text = String(text).replace(/\b(h[aio])(?:[\s,-]+\1\b)+/gi, m => m.replace(/[\s,-]+/g, ''));
     const geraeusche = [];
     const woerter = text.split(/(\s+)/);
     let pos = 0;
@@ -177,9 +190,10 @@
       const kern = teil.replace(/[.,!?;:…"„“”-]/g, '');
       const treffer = kern && GERAEUSCH_WORTE.find(([re]) => re.test(kern));
       if (treffer) {
-        // gleiches Geräusch direkt hintereinander ("Rascheln, rascheln!") nur einmal
+        // gleiches Geräusch direkt hintereinander ("Rascheln, rascheln!") nur einmal; „Bumm, bumm“ beim Herz ist ein Herzschlag
         const letzte = geraeusche[geraeusche.length - 1];
-        if (!letzte || letzte.art !== treffer[1] || wortSeitGeraeusch) geraeusche.push({ art: treffer[1], anteil: pos / gesamt, vorne: vorDemSprechen });
+        const art = treffer[1] === 'schlag' && /herz/i.test(text) ? 'herzschlag' : treffer[1];
+        if (!letzte || letzte.art !== art || wortSeitGeraeusch) geraeusche.push({ art, anteil: pos / gesamt, vorne: vorDemSprechen, mal: treffer[2] || 1 });
         wortSeitGeraeusch = false;
         // Satzzeichen behalten, damit die Stimme die Pause macht
         const zeichen = teil.replace(/[^.!?]/g, '');
